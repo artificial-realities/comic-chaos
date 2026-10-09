@@ -1,5 +1,9 @@
 # Comic Chaos
 
+**Project status:** Completed — no longer actively maintained.
+
+Comic Chaos was a fun experiment in interactive storytelling with generative AI. The live demo has been taken offline, but the source code remains available for anyone interested in exploring or building on the idea.
+
 An interactive AI-powered comic strip generator. Pick a comic series, fill in the speech bubbles, and watch the story unfold — panel by panel.
 
 Comic Chaos uses OpenAI's language and image models to orchestrate narrative, generate artwork, detect speech bubbles, and render text — all in real time through a streaming web interface.
