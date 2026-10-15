@@ -14,8 +14,9 @@ text into it, and the finished strip downloads as a PNG. The stack is Flask with
 Server-Sent Events plus one vanilla-JS page, with English and Norwegian (Bokmål)
 UIs.
 
-It's a completed project published by Artificial Realities. Keep changes small
-and keep the existing experience intact.
+Development is on pause while the team works on other projects. It's
+published by Artificial Realities. Keep changes small and keep the existing
+experience intact.
 
 ## Repository map
 

@@ -1,24 +1,36 @@
 # Comic Chaos
 
-An interactive comic generator built with generative AI.
+An interactive comic platform powered by generative AI. Users write dialogue in
+empty speech bubbles, while language and image models generate new panels and
+adapt the story. Built as a fun exploration of interactive storytelling,
+combining LLMs, image generation and computer vision.
 
 An [Artificial Realities](https://github.com/artificial-realities) project.
 
-Comic Chaos generates comic panels based on user input. Users can write dialogue, influence the story, and generate new panels using language and image models. Finished comics can be exported as a single image.
+## How it works
 
-## Features
+```
+┌─▶ user writes in the bubble
+│     → LLM plans the next panel
+│     → image model draws it with an empty bubble
+│     → OpenCV finds the bubble
+└──── panel streams to the browser
+```
 
-- **Interactive storytelling:** Generate comic panels based on dialogue and user input.
-- **Speech bubbles:** Detect speech bubbles using OpenCV and render text into them.
-- **Multiple comics:** Includes GTA: The Comic, Norway vs. Sweden, and Ticker Town.
-- **Language support:** English and Norwegian.
-- **Export:** Download completed comics as PNG images.
-- **Custom comics:** Define new comics using JSON configuration files.
+- **Story:** an LLM plans each panel as structured JSON and tracks the plot
+  with a rolling summary and story arcs.
+- **Images:** an image model draws each panel with one empty speech bubble,
+  thought bubble or narration box, streaming previews while it draws.
+- **Computer vision:** OpenCV finds the empty bubble through thresholding and
+  contour analysis, and Pillow renders the text into it.
+
+Built with Flask, Server-Sent Events, Pydantic, OpenCV and Pillow. Details in
+[docs/architecture.md](docs/architecture.md).
 
 ## Run it locally
 
-You need **Python 3.11–3.14** and an **OpenAI API key**
-([create one](https://platform.openai.com/api-keys)).
+Requires **Python 3.11–3.14** and an
+[OpenAI API key](https://platform.openai.com/api-keys).
 
 ```bash
 git clone https://github.com/artificial-realities/comic-chaos.git
@@ -27,62 +39,50 @@ python3 -m venv .venv             # Windows: py -m venv .venv
 source .venv/bin/activate          # Windows (PowerShell): .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 cp .env.example .env               # Windows: copy .env.example .env
-                                   # then open .env and paste your API key
+                                   # then add your API key to .env
 python main.py
 ```
 
-Open **<http://localhost:5000>**. Run `python main.py --check` to validate your
-setup without starting the server or calling OpenAI.
+Open <http://localhost:5000>. `python main.py --check` validates the setup
+without calling OpenAI.
 
-### Or with Docker
+Or with Docker (new, and so far only tested in CI):
 
 ```bash
-cp .env.example .env               # then paste your API key into .env
+cp .env.example .env               # then add your API key to .env
 docker compose up --build
 ```
 
-The app is published on `127.0.0.1:5000` only. The Docker setup is new: CI
-builds and smoke-tests the image, but it hasn't been tried on a real Docker
-host yet.
+More in [docs/self-hosting.md](docs/self-hosting.md).
 
-Windows details, configuration options, troubleshooting and more are in
-**[docs/self-hosting.md](docs/self-hosting.md)**.
+## API key and costs
 
-## Your API key and costs
+Comic Chaos uses OpenAI's paid API. Starting a comic costs one story request
+and two images, and each bubble costs one story request and one or two images.
+Consider a monthly budget limit on your OpenAI account.
 
-Comic Chaos uses OpenAI's **paid** API: a chat model writes the story and an
-image model paints the panels. Starting a comic costs one story request and two
-images. Each bubble you fill costs one story request and one or two images
-(occasionally one more, when a panel has to be repainted). Images make up most
-of the cost. Check [OpenAI's pricing](https://openai.com/api/pricing/) and
-consider a monthly budget limit on your OpenAI account.
+The key stays in `.env`, which is git-ignored and excluded from Docker images.
+The server listens on `127.0.0.1` only and has no login, so anyone who can reach
+it can spend your credit. See
+[exposing it beyond your computer](docs/self-hosting.md#exposing-it-beyond-your-computer).
 
-- Your key lives in `.env` on your computer. It's ignored by git and excluded
-  from Docker images, so never commit it or share it.
-- The server listens on `127.0.0.1` only. Comic Chaos has no login, so anyone
-  who could reach it could spend your credit. See
-  [exposing it beyond your computer](docs/self-hosting.md#exposing-it-beyond-your-computer)
-  before changing that.
+> **Model retirement:** OpenAI retires the image models used here on
+> **1 December 2026** and the story models on **14 January 2027**. Models can be
+> switched with `COMIC_CHAOS_IMAGE_MODEL` / `COMIC_CHAOS_LLM_MODEL`, but
+> replacements are untested. See [Model retirement](docs/self-hosting.md#model-retirement).
 
-> **Model retirement:** OpenAI will shut down the image models these comics use
-> (`gpt-image-1.5`, `gpt-image-1-mini`) on **1 December 2026**, and the story
-> models (`gpt-4.1`, `gpt-4o-mini`) on **14 January 2027**. You can switch models
-> with the `COMIC_CHAOS_IMAGE_MODEL` / `COMIC_CHAOS_LLM_MODEL` settings, but
-> replacement models haven't been tested with Comic Chaos yet. See
-> [Model retirement](docs/self-hosting.md#model-retirement).
+## Comics
 
-## Create your own comic
+- **GTA: The Comic.** Open-world chaos: what happens in Oslo Streets stays in
+  Oslo Streets.
+- **Norway vs. Sweden.** Who is the best ski nation?
+- **Ticker Town.** Life as a stock, where market forces feel like acts of god.
 
-Add a folder under `comics/`. The folder name becomes the comic's ID:
+### Create your own comic
 
-```
-comics/my_comic/
-├── blueprint.json    # the world: title, cast, places, style, rules
-└── config.json       # optional: models, image quality, panel font
-```
-
-A minimal `blueprint.json`. The first location is where the story starts, and
-the first character is the hero:
+Add a folder under `comics/` with a `blueprint.json`. The folder name is the
+comic's ID, the first location is where the story starts, and the first
+character is the hero:
 
 ```json
 {
@@ -98,37 +98,22 @@ the first character is the hero:
 }
 ```
 
-`config.json` can set `llm_model`, `image_model`, `image_quality`
-(`low`/`medium`/`high`), `panel_font`, and more. Copy one from
-[`comics/gta/`](comics/gta). The full schema is `Blueprint` and `ComicConfig`
-in [`src/state/static_config.py`](src/state/static_config.py). Validate with
-`python main.py --check`. The comic picker shows three comics, so a fourth needs
-a new bubble in `templates/index.html`.
-
-## How it works
-
-```
-your text → Narratron (chat model) plans the next panel → image model paints it with an empty bubble
-          ← text rendered into the bubble ← OpenCV finds the bubble ←┘
-```
-
-It's a Flask backend streaming panels over Server-Sent Events to a single
-vanilla-JavaScript page. Pydantic models hold the story state, OpenCV finds
-bubbles, and Pillow renders the text and the final strip. Details are in
-**[docs/architecture.md](docs/architecture.md)**.
+An optional `config.json` sets models, image quality, panel font and more (copy
+one from [`comics/gta/`](comics/gta)). The full schema is in
+[`src/state/static_config.py`](src/state/static_config.py). Validate with
+`python main.py --check`. The picker has room for three comics, so a fourth
+needs a new bubble in `templates/index.html`.
 
 ## Contributing
 
-Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) first. The
-test suite runs offline and never calls OpenAI. Coding agents (and curious
-humans) should start with [AGENTS.md](AGENTS.md), and security reports go
-through [SECURITY.md](SECURITY.md).
+Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md),
+[AGENTS.md](AGENTS.md) for conventions, and [SECURITY.md](SECURITY.md) for
+reporting vulnerabilities. Tests run offline and never call OpenAI.
 
 ## Project status
 
-Comic Chaos is a completed project and is no longer actively maintained. The hosted demo has been discontinued, but the application can still be run locally.
-
-The source code remains available for self-hosting, modification, and contributions.
+Comic Chaos is on pause while we work on other projects. It still runs locally,
+and issues and pull requests are welcome. The hosted demo is offline.
 
 ## License and credits
 

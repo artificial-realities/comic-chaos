@@ -1,8 +1,8 @@
 # Contributing to Comic Chaos
 
-Thanks for stopping by. Comic Chaos is a completed project, so the most useful
-contributions are bug fixes, setup and documentation improvements, and new
-comics. For anything bigger, open an issue first so we can agree on the
+Thanks for stopping by. Development of Comic Chaos is on pause, so the most
+useful contributions are bug fixes, setup and documentation improvements, and
+new comics. For anything bigger, open an issue first so we can agree on the
 approach. Replies may be slow.
 
 ## Setup

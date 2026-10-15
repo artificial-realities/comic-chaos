@@ -15,9 +15,9 @@ browser tamper with another's session.
 ## Reporting a vulnerability
 
 Please report privately through GitHub: **Security → Report a vulnerability** on
-this repository. Don't open a public issue for security problems. This is a
-completed project maintained on a best-effort basis, so there's no guaranteed
-response time.
+this repository. Don't open a public issue for security problems. Development
+is on pause and the project is maintained on a best-effort basis, so there's no
+guaranteed response time.
 
 ## If you exposed your API key
 

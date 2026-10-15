@@ -1,9 +1,8 @@
 # Architecture
 
 Comic Chaos is a small Flask app with a single-page vanilla-JavaScript frontend.
-A comic is a loop. The story model plans the next panel, an image model paints
-it with an empty speech bubble, OpenCV finds that bubble, and the reader types
-into it.
+A comic is a loop: the story model plans the next panel, an image model paints
+it with an empty bubble, OpenCV finds that bubble, and the reader types into it.
 
 ```
                  ┌──────────── browser (templates/index.html) ────────────┐
