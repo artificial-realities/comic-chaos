@@ -50,9 +50,6 @@ python main.py
 Open **<http://localhost:5000>**. Run `python main.py --check` to validate your
 setup without starting the server or calling OpenAI.
 
-> **Before the move to Artificial Realities is complete**, clone
-> `https://github.com/sbfroy/ComicChaos.git comic-chaos` instead.
-
 ### Or with Docker
 
 ```bash
