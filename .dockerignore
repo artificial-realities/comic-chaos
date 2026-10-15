@@ -1,0 +1,29 @@
+# Secrets and local environments
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+env/
+
+# Generated and local-only files
+output/
+__pycache__/
+*.py[cod]
+*.log
+.pytest_cache/
+.ruff_cache/
+notebooks/
+comics/archive/
+splash_preview.html
+tasks/
+.claude/
+
+# Not needed at runtime
+.git/
+.github/
+tests/
+docs/
+.idea/
+.vscode/
+.DS_Store
