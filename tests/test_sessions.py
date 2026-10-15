@@ -102,3 +102,17 @@ def test_stale_sessions_are_evicted(app_module):
 
     assert SID not in app_module.sessions
     assert not (app_module.SESSIONS_DIR / f"{SID}.json").exists()
+
+
+def test_orphaned_checkpoints_are_removed_by_age(app_module):
+    old_sid, fresh_sid = SID, "session_" + "f" * 32
+    app_module.save_session(old_sid, make_session())  # e.g. left behind by a restart
+    app_module.save_session(fresh_sid, make_session())
+    old_path = app_module.SESSIONS_DIR / f"{old_sid}.json"
+    stale_time = time.time() - app_module.SESSION_TTL_SECONDS - 60
+    os.utime(old_path, (stale_time, stale_time))
+
+    app_module.cleanup_stale_sessions()
+
+    assert not old_path.exists()
+    assert (app_module.SESSIONS_DIR / f"{fresh_sid}.json").exists()

@@ -70,7 +70,7 @@ def cleanup_stale_sessions():
     """Evict sessions that haven't been accessed within the TTL.
 
     Removes both in-memory session objects and on-disk checkpoints.
-    Called at the start of new session creation to keep memory bounded.
+    Called at the start of new session creation to keep memory and disk bounded.
     """
     now = time.monotonic()
     stale = [
@@ -83,6 +83,16 @@ def cleanup_stale_sessions():
         cleanup_session_file(sid)
     if stale:
         print(f"[SESSION] Cleaned up {len(stale)} stale session(s)")
+
+    # Checkpoints orphaned by a restart (or written by another worker) are
+    # removed by age. Active sessions are re-saved after every panel.
+    cutoff = time.time() - SESSION_TTL_SECONDS
+    try:
+        for path in SESSIONS_DIR.glob("*.json"):
+            if path.stat().st_mtime < cutoff:
+                path.unlink(missing_ok=True)
+    except OSError as e:
+        print(f"[SESSION] Checkpoint cleanup failed: {e}")
 
 
 def _encode_panel(panel):
