@@ -32,6 +32,9 @@ The defaults for models, prompts, comics and creative behaviour were not changed
   read-only code directory (only `output/` writable).
 - Gunicorn with two gevent workers, plus two separate server processes sharing
   `output/sessions/`, carried one comic across processes (with faked models).
+- The real UI, driven in headless Chromium through a whole comic with faked
+  models: missing-key notice, streamed panels, HTML typed into a bubble shown
+  as plain text, finished strip. No page or console errors.
 - No secrets in tracked files or in git history (pattern scan; `.env` was never committed).
 
 ## Not verified
