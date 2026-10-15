@@ -1135,6 +1135,7 @@
                 createAnother: 'Lag en ny?',
                 generating: 'Genererer...',
                 apiUnavailable: 'API-lommeboken er dessverre tom :(',
+                apiKeyMissing: 'Legg inn en OpenAI API-n\u00f8kkel i .env for \u00e5 starte!',
                 sessionExpired: '\u00d8kten har utl\u00f8pt \u2014 start en ny tegneserie!',
             },
             en: {
@@ -1154,6 +1155,7 @@
                 createAnother: 'Create another?',
                 generating: 'Generating...',
                 apiUnavailable: 'The API wallet is empty :(',
+                apiKeyMissing: 'Add an OpenAI API key to .env to start!',
                 sessionExpired: 'Session expired \u2014 start a new comic!',
             }
         };
@@ -1186,7 +1188,7 @@
         function escapeHtml(str) {
             const div = document.createElement('div');
             div.textContent = str;
-            return div.innerHTML;
+            return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         }
 
         function applyTranslations() {
@@ -1269,7 +1271,9 @@
         };
 
         function generateSessionId() {
-            return 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            const bytes = new Uint8Array(16);
+            crypto.getRandomValues(bytes);
+            return 'session_' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
         }
 
         function showNotification(message, duration = 3000) {
@@ -1426,19 +1430,19 @@
                     div.style.height = `${heightPct}%`;
 
                     if (isEditable && isUserInput) {
-                        content = `<textarea class="element-input" placeholder="${el.placeholder || 'Narrate...'}" style="background: transparent; resize: none;">${displayText}</textarea>`;
+                        content = `<textarea class="element-input" placeholder="${escapeHtml(el.placeholder || 'Narrate...')}" style="background: transparent; resize: none;">${escapeHtml(displayText)}</textarea>`;
                     } else {
                         const fontSize = getBubbleFontSize(displayText.length);
-                        content = `<div class="element-text" style="font-size: ${fontSize}px; font-style: italic;">${displayText}</div>`;
+                        content = `<div class="element-text" style="font-size: ${fontSize}px; font-style: italic;">${escapeHtml(displayText)}</div>`;
                     }
                 } else {
                     // Fallback: corner narration box
                     div.classList.add('narration-box', getNarrationCornerClass(el.position));
                     if (isUserInput) div.classList.add('user-input');
                     if (isEditable && isUserInput) {
-                        content = `<textarea class="element-input" placeholder="${el.placeholder || 'Narrate...'}">${displayText}</textarea>`;
+                        content = `<textarea class="element-input" placeholder="${escapeHtml(el.placeholder || 'Narrate...')}">${escapeHtml(displayText)}</textarea>`;
                     } else {
-                        content = `<div class="element-text">${displayText}</div>`;
+                        content = `<div class="element-text">${escapeHtml(displayText)}</div>`;
                     }
                 }
             } else if (el.type === 'speech' || el.type === 'thought') {
@@ -1461,10 +1465,10 @@
                     div.style.height = `${heightPct}%`;
 
                     if (isEditable && isUserInput) {
-                        content = `<textarea class="element-input" placeholder="${el.placeholder || 'Say something...'}" style="background: transparent; resize: none;">${displayText}</textarea>`;
+                        content = `<textarea class="element-input" placeholder="${escapeHtml(el.placeholder || 'Say something...')}" style="background: transparent; resize: none;">${escapeHtml(displayText)}</textarea>`;
                     } else {
                         const fontSize = getBubbleFontSize(displayText.length);
-                        content = `<div class="element-text" style="font-size: ${fontSize}px;">${displayText}</div>`;
+                        content = `<div class="element-text" style="font-size: ${fontSize}px;">${escapeHtml(displayText)}</div>`;
                     }
                 } else {
                     // Fallback to grid positioning with visible bubble
@@ -1473,10 +1477,10 @@
                     if (isUserInput) div.classList.add('user-input');
 
                     if (isEditable && isUserInput) {
-                        content += `<textarea class="element-input" placeholder="${el.placeholder || 'Say something...'}">${displayText}</textarea>`;
+                        content += `<textarea class="element-input" placeholder="${escapeHtml(el.placeholder || 'Say something...')}">${escapeHtml(displayText)}</textarea>`;
                     } else {
                         const fontSize = getBubbleFontSize(displayText.length);
-                        content += `<div class="element-text" style="font-size: ${fontSize}px;">${displayText}</div>`;
+                        content += `<div class="element-text" style="font-size: ${fontSize}px;">${escapeHtml(displayText)}</div>`;
                     }
                 }
             }
@@ -1594,10 +1598,12 @@
 
                 // Check API availability before enabling interaction
                 let apiAvailable = true;
+                let unavailableReason = null;
                 try {
                     const statusRes = await fetch('/api/status');
                     const status = await statusRes.json();
                     apiAvailable = status.api_available;
+                    unavailableReason = status.reason || null;
                 } catch (e) { /* status check is best-effort */ }
 
                 if (apiAvailable) {
@@ -1615,8 +1621,8 @@
                         b.style.opacity = '0.6';
                     });
                     const label = document.querySelector('.select-label');
-                    label.dataset.i18n = 'apiUnavailable';
-                    label.textContent = t('apiUnavailable');
+                    label.dataset.i18n = unavailableReason === 'missing_api_key' ? 'apiKeyMissing' : 'apiUnavailable';
+                    label.textContent = t(label.dataset.i18n);
                 }
 
                 // Start floating animation after all pop-ins complete
@@ -1678,6 +1684,10 @@
                     elements.comicSelect.classList.remove('hidden');
                     setLangSwitcherVisible(true);
                     return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`start-stream failed with HTTP ${response.status}`);
                 }
 
                 const reader = response.body.getReader();
@@ -1901,6 +1911,11 @@
 
                 if (response.status === 404) {
                     handleSessionExpired();
+                    return;
+                }
+
+                if (!response.ok) {
+                    recoverFromError(t('failedContinue'));
                     return;
                 }
 
