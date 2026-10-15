@@ -71,8 +71,8 @@ def check_config() -> tuple[list[str], list[str]]:
 
     if get_openai_api_key() is None:
         errors.append(
-            "OPENAI_API_KEY is not set. Copy .env.example to .env and put your own key "
-            "on the OPENAI_API_KEY line (https://platform.openai.com/api-keys). "
+            "OPENAI_API_KEY is missing (or still the .env.example placeholder). Copy .env.example "
+            "to .env and put your own key on the OPENAI_API_KEY line (https://platform.openai.com/api-keys). "
             "The UI still starts, but comics cannot be generated without a key."
         )
 
