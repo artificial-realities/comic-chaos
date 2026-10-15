@@ -1,59 +1,30 @@
 # CLAUDE.md
 
-## 1. Plan Mode Default
+**Read [AGENTS.md](AGENTS.md) first.** It is the source of truth for this
+project: setup and test commands, secrets handling, the rules on paid OpenAI
+calls and network exposure, code style, and the definition of done. This file
+only adds Claude Code workflow preferences on top of it.
 
--   Enter plan mode for ANY non-trivial task (3+ steps or architectural
-    decisions)
--   If something goes sideways, STOP and re-plan immediately --- don't
-    keep pushing
--   Use plan mode for verification steps, not just building
--   Write detailed specs upfront to reduce ambiguity
+## Workflow
 
-## 2. Subagent Strategy
+- **Plan first** for non-trivial work (3+ steps or an architectural decision).
+  Share the plan and check in before implementing, unless told to go ahead. If
+  something goes sideways, stop and re-plan instead of pushing on.
+- **Verify before calling it done.** Run `ruff check .` and `python -m pytest`,
+  compare behaviour with `main` when relevant, and ask "would a staff engineer
+  approve this?". Never start or submit a real comic to verify something: that's
+  a paid API call and needs the owner's explicit go-ahead.
+- **Simplicity and root causes.** Make the smallest change that fixes the real
+  problem; no temporary hacks. For non-trivial changes, pause and look for a more
+  elegant approach, but don't over-engineer simple fixes.
+- **Subagents** are fine for broad research or exploration that would flood the
+  main context. Give each one a single focused task.
 
--   Use subagents liberally to keep main context window clean
--   Offload research, exploration, and parallel analysis to subagents
--   For complex problems, throw more compute at it via subagents
--   One task per subagent for focused execution
+## Local notes (optional)
 
-## 3. Self-Improvement Loop
+`tasks/` is git-ignored and stays on your machine:
 
--   After ANY correction from the user: update `tasks/lessons.md` with
-    the pattern
--   Write rules for yourself that prevent the same mistake
--   Ruthlessly iterate on these lessons until mistake rate drops
--   Review lessons at session start for relevant project
-
-## 4. Verification Before Done
-
--   Never mark a task complete without proving it works
--   Diff behavior between main and your changes when relevant
--   Ask yourself: "Would a staff engineer approve this?"
--   Run tests, check logs, demonstrate correctness
-
-## 5. Demand Elegance (Balanced)
-
--   For non-trivial changes: pause and ask "is there a more elegant
-    way?"
--   If a fix feels hacky: "Knowing everything I know now, implement the
-    elegant solution"
--   Skip this for simple, obvious fixes --- don't over-engineer
--   Challenge your own work before presenting it
-
-## Task Management
-
-1.  **Plan First**: Write plan to `tasks/todo.md` with checkable items\
-2.  **Verify Plan**: Check in before starting implementation\
-3.  **Track Progress**: Mark items complete as you go\
-4.  **Explain Changes**: High-level summary at each step\
-5.  **Document Results**: Add review section to `tasks/todo.md`\
-6.  **Capture Lessons**: Update `tasks/lessons.md` after corrections
-
-## Core Principles
-
--   **Simplicity First**: Make every change as simple as possible.
-    Impact minimal code.\
--   **No Laziness**: Find root causes. No temporary fixes. Senior
-    developer standards.\
--   **Minimal Impact**: Changes should only touch what's necessary.
-    Avoid introducing bugs.
+- `tasks/todo.md`: the plan as a checklist, ticked off as you go, with a short
+  review section at the end.
+- `tasks/lessons.md`: after any correction from the owner, record the pattern
+  and a rule that prevents it. Review it at the start of a session.
