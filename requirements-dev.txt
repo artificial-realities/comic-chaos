@@ -1,0 +1,4 @@
+# Development and CI tools (offline; no API key needed)
+-r requirements.txt
+pytest>=8,<10
+ruff==0.17.0

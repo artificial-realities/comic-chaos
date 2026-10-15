@@ -1,0 +1,43 @@
+name: CI
+
+# Offline checks only: no secrets, no OpenAI key, no paid API calls.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]  # oldest and newest supported
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements*.txt
+      - run: python -m pip install -r requirements-dev.txt
+      - run: ruff check .
+      - run: python -m pytest
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker build -t comic-chaos .
+      - name: Start the container without a key and check the UI comes up
+        run: |
+          docker run -d --name comic-chaos -p 127.0.0.1:5000:5000 comic-chaos
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:5000/api/status && break; sleep 1; done
+          curl -fsS http://127.0.0.1:5000/api/status | grep -q missing_api_key
+          curl -fsS http://127.0.0.1:5000/ | grep -q "Comic Chaos"
+          curl -fsS http://127.0.0.1:5000/api/comics | grep -q '"id"'
+      - if: always()
+        run: docker logs comic-chaos || true
