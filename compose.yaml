@@ -1,0 +1,15 @@
+# Run Comic Chaos in Docker:   docker compose up --build
+# then open http://localhost:5000
+services:
+  comic-chaos:
+    build: .
+    image: comic-chaos
+    # Your OpenAI key is read from .env at start-up (copy .env.example first).
+    env_file: .env
+    environment:
+      HOST: 0.0.0.0  # inside the container only; overrides any HOST in .env
+      PORT: "5000"
+    ports:
+      # Reachable from this computer only. Comic Chaos has no login, and every
+      # comic is billed to the configured OpenAI account.
+      - "127.0.0.1:5000:5000"

@@ -5,8 +5,12 @@ The first location is the starting location and the first character is the main 
 """
 
 import json
+import os
 from pathlib import Path
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel, Field, ValidationError
+
+from ..config import MODEL_ENV_OVERRIDES
 
 
 class Location(BaseModel):
@@ -113,4 +117,28 @@ class StaticConfig(BaseModel):
                 data = json.load(f)
                 comic_config = ComicConfig(**data)
 
+        # Optional deployment-wide model overrides (e.g. COMIC_CHAOS_IMAGE_MODEL)
+        overrides = {field: os.environ[var] for field, var in MODEL_ENV_OVERRIDES.items() if os.getenv(var)}
+        if overrides:
+            comic_config = comic_config.model_copy(update=overrides)
+
         return cls(blueprint=blueprint, comic_config=comic_config)
+
+
+def validate_comic_dir(comic_dir: str | Path) -> list[str]:
+    """Check that a comic directory can be loaded and started. Returns problems (empty = OK)."""
+    comic_dir = Path(comic_dir)
+    try:
+        config = StaticConfig.load_from_directory(comic_dir)
+    except (OSError, json.JSONDecodeError, ValidationError) as e:
+        return [f"{comic_dir.name}: {type(e).__name__}: {e}"]
+
+    problems = []
+    if config.blueprint is None:
+        problems.append(f"{comic_dir.name}: missing blueprint.json")
+    else:
+        if not config.blueprint.locations:
+            problems.append(f"{comic_dir.name}: blueprint needs at least one location (the first is the start)")
+        if not config.blueprint.characters:
+            problems.append(f"{comic_dir.name}: blueprint needs at least one character (the first is the hero)")
+    return problems

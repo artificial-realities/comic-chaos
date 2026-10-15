@@ -1,10 +1,14 @@
-openai>=1.0.0
-python-dotenv>=1.0.0
-Pillow>=10.0.0
-pydantic>=2.0.0
-flask>=3.0.0
-flask-limiter>=3.5.0
-gunicorn>=22.0.0
-gevent>=24.0.0
-opencv-python-headless>=4.8.0
-numpy>=1.24.0
+# Runtime dependencies. Ranges are bounded to major versions the app has been
+# tested with; see docs/self-hosting.md for the supported Python versions.
+openai>=1.97,<4            # 1.97 added streamed image generation (partial_images)
+python-dotenv>=1.0,<2
+Pillow>=10.0,<13
+pydantic>=2.0,<3
+flask>=3.0,<4
+flask-limiter>=3.5,<5
+opencv-python-headless>=4.8,<6
+numpy>=1.24,<3
+
+# Optional production-style server (used by docs/self-hosting.md, not by `python main.py`)
+gunicorn>=22,<27
+gevent>=24,<27

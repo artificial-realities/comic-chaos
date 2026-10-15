@@ -7,7 +7,7 @@ and characters while maintaining consistency with the comic's blueprint and rule
 
 import json
 import os
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List
 
 from openai import OpenAI
 
@@ -272,7 +272,8 @@ class Narratron:
                     response = self._parse_response(response_text)
                     if response.raw is not FALLBACK_RESPONSE:
                         break
-        except Exception:
+        except Exception as e:
+            print(f"[NARRATRON] Panel generation failed, using fallback panel: {type(e).__name__}: {e}")
             response = NarratronResponse(FALLBACK_RESPONSE)
 
         self._localize_fallback_placeholders(response)
@@ -461,7 +462,8 @@ class Narratron:
             # Deep-sanitize all string values
             data = sanitize_parsed_response(data)
             response = OpeningSequenceResponse.from_raw(data)
-        except Exception:
+        except Exception as e:
+            print(f"[NARRATRON] Opening sequence failed, using fallback: {type(e).__name__}: {e}")
             response = OpeningSequenceResponse(
                 title_card=TitleCardPanel(
                     scene_description=f"A dramatic establishing shot for {display_title}",
