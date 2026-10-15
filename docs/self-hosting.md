@@ -56,10 +56,6 @@ In Command Prompt, activate with `.venv\Scripts\activate.bat` and copy with
 commands follow standard Python conventions but haven't been tested on native
 Windows by the maintainers; the Linux steps have, including under WSL.)
 
-> Until the repository has moved to the Artificial Realities organization, clone
-> `https://github.com/sbfroy/ComicChaos.git comic-chaos` instead. Old links
-> redirect after the move.
-
 Then open <http://localhost:5000>. On start-up the server prints any
 configuration problems, such as a missing key.
 
