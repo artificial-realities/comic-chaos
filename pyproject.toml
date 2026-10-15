@@ -1,4 +1,4 @@
-# Tool configuration only. Comic Chaos runs from a checkout (`python main.py`)
+# Tool configuration only. Comic Chaos runs from a checkout (`python -m comic_chaos`)
 # and is not packaged for installation.
 
 [tool.ruff]

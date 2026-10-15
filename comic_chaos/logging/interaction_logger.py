@@ -10,7 +10,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Dict, Any, List
-from src.config import LOGS_DIR
+from ..config import LOGS_DIR
 
 
 class InteractionLogger:

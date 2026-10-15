@@ -40,11 +40,11 @@ source .venv/bin/activate          # Windows (PowerShell): .venv\Scripts\Activat
 pip install -r requirements.txt
 cp .env.example .env               # Windows: copy .env.example .env
                                    # then add your API key to .env
-python main.py
+python -m comic_chaos
 ```
 
-Open <http://localhost:5000>. `python main.py --check` validates the setup
-without calling OpenAI.
+Open <http://localhost:5000>. `python -m comic_chaos --check` validates the
+setup without calling OpenAI.
 
 Or with Docker (new, and so far only tested in CI):
 
@@ -100,15 +100,15 @@ character is the hero:
 
 An optional `config.json` sets models, image quality, panel font and more (copy
 one from [`comics/gta/`](comics/gta)). The full schema is in
-[`src/state/static_config.py`](src/state/static_config.py). Validate with
-`python main.py --check`. The picker has room for three comics, so a fourth
-needs a new bubble in `templates/index.html`.
+[`comic_chaos/state/static_config.py`](comic_chaos/state/static_config.py).
+Validate with `python -m comic_chaos --check`. The picker has room for three
+comics, so a fourth needs a new bubble in `comic_chaos/templates/index.html`.
 
 ## Contributing
 
-Contributions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md),
-[AGENTS.md](AGENTS.md) for conventions, and [SECURITY.md](SECURITY.md) for
-reporting vulnerabilities. Tests run offline and never call OpenAI.
+Contributions are welcome. See [CONTRIBUTING.md](.github/CONTRIBUTING.md),
+[AGENTS.md](AGENTS.md) for conventions, and [SECURITY.md](.github/SECURITY.md)
+for reporting vulnerabilities. Tests run offline and never call OpenAI.
 
 ## Project status
 
@@ -122,5 +122,6 @@ and issues and pull requests are welcome. The hosted demo is offline.
 [Artificial Realities](https://github.com/artificial-realities).
 
 Panel text uses [Comic Neue](https://github.com/crozynski/comicneue)
-(SIL Open Font License, [`static/fonts/OFL.txt`](static/fonts/OFL.txt)).
+(SIL Open Font License,
+[`comic_chaos/static/fonts/OFL.txt`](comic_chaos/static/fonts/OFL.txt)).
 Story and artwork are generated with OpenAI models.

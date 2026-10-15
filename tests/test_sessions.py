@@ -6,8 +6,8 @@ import time
 
 import pytest
 
-from src.comic_session import ComicSession
-from src.state.comic_state import ComicState
+from comic_chaos.comic_session import ComicSession
+from comic_chaos.state.comic_state import ComicState
 from helpers import make_bubble_png
 
 

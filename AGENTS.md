@@ -20,25 +20,30 @@ experience intact.
 
 ## Repository map
 
+All code lives in the `comic_chaos/` package; `comics/` holds data only.
+
 ```
-main.py                     entry point: python main.py [--check]
-app.py                      Flask routes, rate limits, session cache + JSON checkpoints
-src/config.py               paths, .env loading, API-key detection, check_config()
-src/comic_session.py        one comic: orchestrates Narratron, images, state, strip
-src/narratron/              story engine (narratron.py) and response models/schemas (models.py)
-src/prompts/*.md            prompt templates (Python str.format: literal braces must be doubled)
-src/image_gen/              image_generator.py (OpenAI images), panel_detector.py (OpenCV),
+comic_chaos/
+  __main__.py               entry point: python -m comic_chaos [--check]
+  app.py                    Flask routes, rate limits, session cache + JSON checkpoints
+  config.py                 paths, .env loading, API-key detection, check_config()
+  comic_session.py          one comic: orchestrates Narratron, images, state, strip
+  comic_registry.py         comic discovery
+  narratron/                story engine (narratron.py) and response models/schemas (models.py)
+  prompts/*.md              prompt templates (Python str.format: literal braces must be doubled)
+  image_gen/                image_generator.py (OpenAI images), panel_detector.py (OpenCV),
                             text_renderer.py (Pillow)
-src/comic_strip.py          final strip assembly
-src/state/                  static_config.py (Blueprint, ComicConfig, validate_comic_dir),
+  comic_strip.py            final strip assembly
+  state/                    static_config.py (Blueprint, ComicConfig, validate_comic_dir),
                             comic_state.py (story state)
-src/json_sanitizer.py       cleaning and repair of model JSON
-src/logging/                optional prompt/response logging (off: ENABLE_LOGGING in src/config.py)
+  json_sanitizer.py         cleaning and repair of model JSON
+  logging/                  optional prompt/response logging (off: ENABLE_LOGGING in config.py)
+  templates/index.html      the entire frontend, including EN/NO strings (`translations`)
+  static/                   fonts (Comic Neue, OFL) and UI images
 comics/<id>/                blueprint.json (+ optional config.json); comics/archive/ is ignored
-comics/comic_registry.py    comic discovery
-templates/index.html        the entire frontend, including EN/NO strings (`translations`)
-static/                     fonts (Comic Neue, OFL) and UI images
 tests/                      offline pytest suite; tests/helpers.py has synthetic images and an SSE parser
+docs/                       architecture, self-hosting, maintenance notes
+.github/                    CI workflow, CONTRIBUTING.md, SECURITY.md
 output/                     runtime data (git-ignored): sessions/, logs/
 ```
 
@@ -49,11 +54,11 @@ Run everything from the repository root inside a virtual environment.
 ```bash
 python3 -m venv .venv && source .venv/bin/activate   # Windows: py -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt                  # runtime + pytest + ruff (pinned)
-python main.py --check      # offline config/blueprint validation; exit 1 if no key or a broken comic
-python -m pytest            # offline test suite (blocks network access, needs no key)
-ruff check .                # lint (rules in pyproject.toml)
-python main.py              # serve on http://127.0.0.1:5000 (HOST/PORT to change)
-docker compose up --build   # container alternative (needs .env)
+python -m comic_chaos --check                        # offline config/blueprint validation; exit 1 if no key or a broken comic
+python -m pytest                                     # offline test suite (blocks network access, needs no key)
+ruff check .                                         # lint (rules in pyproject.toml)
+python -m comic_chaos                                # serve on http://127.0.0.1:5000 (HOST/PORT to change)
+docker compose up --build                            # container alternative (needs .env)
 ```
 
 Supported Python: 3.11–3.14. CI (`.github/workflows/ci.yml`) runs Ruff and
@@ -67,7 +72,7 @@ changing.
   in the repo root (`cp .env.example .env`). `.env` is git-ignored and excluded
   from Docker builds.
 - **Never print, log, commit, echo or paste the key or the contents of `.env`.**
-  Don't open `.env` to "check" it. Use `python main.py --check`, which reports
+  Don't open `.env` to "check" it. Use `python -m comic_chaos --check`, which reports
   only whether a key is configured. If no key is set, tell the human to create
   one at <https://platform.openai.com/api-keys> and put it in `.env` themselves.
   Never ask them to paste it into chat.
@@ -97,9 +102,9 @@ request plus one or more images).
 ## Verifying changes without paid calls
 
 1. `ruff check .` and `python -m pytest` must pass.
-2. `python main.py --check` with no key should exit 1 and name `OPENAI_API_KEY`.
+2. `python -m comic_chaos --check` with no key should exit 1 and name `OPENAI_API_KEY`.
 3. UI smoke test with no key:
-   `OPENAI_API_KEY= PORT=5055 python main.py`, then
+   `OPENAI_API_KEY= PORT=5055 python -m comic_chaos`, then
    `curl -s localhost:5055/api/status` → `{"api_available":false,"reason":"missing_api_key"}`,
    `curl -s localhost:5055/api/comics` lists the comics, and `/` loads. The comic
    picker shows a missing-key notice. (An empty `OPENAI_API_KEY` in the real
@@ -114,28 +119,28 @@ request plus one or more images).
    entry in `locations` (the first is where the story starts) and in
    `characters` (the first is the hero). Optional: `title_no`, `synopsis_no`
    (Norwegian UI text), `visual_style`, `rules`, `long_term_narrative`,
-   `narrative_premise`. The schema is `Blueprint` in `src/state/static_config.py`;
+   `narrative_premise`. The schema is `Blueprint` in `comic_chaos/state/static_config.py`;
    copy an existing comic as a template.
 3. Optional `config.json`: any `ComicConfig` field (`llm_model`,
    `llm_temperature`, `llm_top_p`, `llm_max_tokens`, `image_model`,
    `image_size`, `image_quality`, `image_moderation`, `panel_font`).
-4. Validate with `python main.py --check` and `python -m pytest`
+4. Validate with `python -m comic_chaos --check` and `python -m pytest`
    (`tests/test_comics.py` validates every bundled comic). The picker has
-   bubbles for three comics; a fourth needs a new bubble in `templates/index.html`.
+   bubbles for three comics; a fourth needs a new bubble in `comic_chaos/templates/index.html`.
 
 ## Code style and constraints
 
 - Keep the stack: Flask, Server-Sent Events, vanilla JS in the single
-  `templates/index.html`, Pydantic v2 models. No new frameworks, build steps,
+  `comic_chaos/templates/index.html`, Pydantic v2 models. No new frameworks, build steps,
   databases or services.
 - Match the surrounding code: type hints on signatures, docstrings on public
   functions, `print("[AREA] ...")` for server logs (there is no logging
   framework), 120-character lines.
-- UI strings exist in both languages in `translations` in `templates/index.html`.
+- UI strings exist in both languages in `translations` in `comic_chaos/templates/index.html`.
 - Text from users or models must go through `escapeHtml` before `innerHTML`.
 - Don't rename modules, comic IDs, routes, SSE event types or the checkpoint
   format without need. If the checkpoint format changes, bump
-  `CHECKPOINT_VERSION` in `app.py`.
+  `CHECKPOINT_VERSION` in `comic_chaos/app.py`.
 
 ## Safety rules
 

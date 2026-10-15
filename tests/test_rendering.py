@@ -4,9 +4,9 @@ from io import BytesIO
 
 from PIL import Image
 
-from src.comic_strip import ComicStrip
-from src.image_gen.panel_detector import PanelDetector
-from src.image_gen.text_renderer import TextElement, TextRenderer
+from comic_chaos.comic_strip import ComicStrip
+from comic_chaos.image_gen.panel_detector import PanelDetector
+from comic_chaos.image_gen.text_renderer import TextElement, TextRenderer
 from helpers import BUBBLE_BOX, NARRATION_BOX, make_bubble_png, make_narration_png
 
 

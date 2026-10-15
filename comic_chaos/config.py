@@ -2,7 +2,7 @@
 
 Per-comic model settings (LLM/image model, quality, temperature, font) live in
 each comic's ``config.json``; their defaults are defined by ``ComicConfig`` in
-``src/state/static_config.py``.
+``comic_chaos/state/static_config.py``.
 """
 
 import os
@@ -79,8 +79,8 @@ def check_config() -> tuple[list[str], list[str]]:
     if not is_api_enabled():
         warnings.append("API_ENABLED=false — comic generation is switched off.")
 
-    from comics.comic_registry import ComicRegistry
-    from src.state.static_config import validate_comic_dir
+    from .comic_registry import ComicRegistry
+    from .state.static_config import validate_comic_dir
 
     registry = ComicRegistry(comics_dir=COMICS_DIR)
     if not registry.get_available_comics():

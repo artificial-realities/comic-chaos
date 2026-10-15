@@ -6,7 +6,7 @@ Comic Chaos is built for **trusted local use**: one person or a few people on
 their own computer, with their own OpenAI key. It has **no authentication**, and
 it binds to `127.0.0.1` by default. Running it on a public network without
 adding authentication, HTTPS and an API budget limit is outside what it's
-designed for. See [docs/self-hosting.md](docs/self-hosting.md#exposing-it-beyond-your-computer).
+designed for. See [docs/self-hosting.md](../docs/self-hosting.md#exposing-it-beyond-your-computer).
 
 Within that scope, we care about anything that could leak an API key, read or
 write files outside `output/`, run code from untrusted input, or let one

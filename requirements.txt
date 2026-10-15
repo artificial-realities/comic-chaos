@@ -9,6 +9,6 @@ flask-limiter>=3.5,<5
 opencv-python-headless>=4.8,<6
 numpy>=1.24,<3
 
-# Optional production-style server (used by docs/self-hosting.md, not by `python main.py`)
+# Optional production-style server (used by docs/self-hosting.md, not by `python -m comic_chaos`)
 gunicorn>=22,<27
 gevent>=24,<27

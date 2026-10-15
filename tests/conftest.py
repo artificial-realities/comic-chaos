@@ -64,7 +64,7 @@ def api_key(monkeypatch):
 @pytest.fixture
 def app_module(monkeypatch, tmp_path):
     """The Flask app module with session checkpoints isolated in tmp_path."""
-    import app as app_module
+    from comic_chaos import app as app_module
 
     monkeypatch.setattr(app_module, "SESSIONS_DIR", tmp_path / "sessions")
     app_module.sessions.clear()

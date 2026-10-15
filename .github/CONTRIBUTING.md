@@ -14,8 +14,8 @@ python -m pytest        # offline: no API key, no network
 ruff check .
 ```
 
-To run the app, see the [README](README.md#run-it-locally).
-[AGENTS.md](AGENTS.md) has the repository map, conventions, and the checklist
+To run the app, see the [README](../README.md#run-it-locally).
+[AGENTS.md](../AGENTS.md) has the repository map, conventions, and the checklist
 we use for every change, whether written by a person or a coding agent.
 
 ## Guidelines
@@ -30,8 +30,8 @@ we use for every change, whether written by a person or a coding agent.
 - **Update the docs** (README, `docs/`, `.env.example`, `AGENTS.md`) when
   behaviour, configuration or setup changes.
 - **New comics** need a valid `blueprint.json` and should pass
-  `python main.py --check`. Keep content suitable for a general audience.
+  `python -m comic_chaos --check`. Keep content suitable for a general audience.
 - The UI is bilingual: add new strings in both English and Norwegian.
 
 By contributing, you agree that your contributions are licensed under the
-[MIT License](LICENSE).
+[MIT License](../LICENSE).

@@ -35,7 +35,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env        # then open .env and paste your OpenAI API key
-python main.py
+python -m comic_chaos
 ```
 
 **Windows (PowerShell)**
@@ -47,7 +47,7 @@ py -m venv .venv
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 Copy-Item .env.example .env   # then open .env and paste your OpenAI API key
-python main.py
+python -m comic_chaos
 ```
 
 In Command Prompt, activate with `.venv\Scripts\activate.bat` and copy with
@@ -62,7 +62,7 @@ configuration problems, such as a missing key.
 Check your setup at any time without starting the server or calling OpenAI:
 
 ```bash
-python main.py --check
+python -m comic_chaos --check
 ```
 
 It confirms that a key is configured (not that OpenAI accepts it) and that every
@@ -103,8 +103,8 @@ root. Real environment variables take precedence over `.env`.
 | Variable | Default | Purpose |
 |---|---|---|
 | `OPENAI_API_KEY` | — | **Required to generate comics.** Billed for every comic. |
-| `HOST` | `127.0.0.1` | Address `python main.py` listens on. See [exposing it](#exposing-it-beyond-your-computer). |
-| `PORT` | `5000` | Port `python main.py` listens on. |
+| `HOST` | `127.0.0.1` | Address `python -m comic_chaos` listens on. See [exposing it](#exposing-it-beyond-your-computer). |
+| `PORT` | `5000` | Port `python -m comic_chaos` listens on. |
 | `API_ENABLED` | `true` | `false` switches generation off; the UI still loads. |
 | `COMIC_CHAOS_LLM_MODEL` | per comic | Use this story model for every comic. |
 | `COMIC_CHAOS_IMAGE_MODEL` | per comic | Use this image model for every comic. |
@@ -127,7 +127,7 @@ Every comic uses OpenAI's paid API. Each bundled comic's `config.json` selects:
 
 A comic without a `config.json` falls back to `gpt-4o-mini` and
 `gpt-image-1-mini` at quality `low` (the `ComicConfig` defaults in
-`src/state/static_config.py`).
+`comic_chaos/state/static_config.py`).
 
 **What gets billed:**
 
@@ -177,7 +177,7 @@ Everything the app writes goes under `output/` (ignored by git):
   your user. A checkpoint is deleted when you finish the comic. Abandoned ones
   are deleted after an hour, the next time a comic is started.
 - `output/logs/`: full prompts and responses, only if you set
-  `ENABLE_LOGGING = True` in `src/config.py`.
+  `ENABLE_LOGGING = True` in `comic_chaos/config.py`.
 
 The server talks only to OpenAI. The page itself loads the Roboto Mono font from
 Google Fonts.
@@ -189,7 +189,7 @@ reach the server can start comics on your API key. Built-in rate limits (6 new
 comics and 10 submissions per minute per IP address, held in memory per
 process) slow down accidents. They are not cost control.
 
-- On a trusted home network, `HOST=0.0.0.0 python main.py` makes it reachable from
+- On a trusted home network, `HOST=0.0.0.0 python -m comic_chaos` makes it reachable from
   other devices. Only do this on networks you trust.
 - On the public internet, put it behind real authentication (for example a
   reverse proxy with login) and HTTPS, and set a hard budget limit in your
@@ -198,21 +198,23 @@ process) slow down accidents. They are not cost control.
 Production-style server (Linux/macOS; same settings the old hosted demo used):
 
 ```bash
-gunicorn --bind 127.0.0.1:5000 --worker-class gevent --workers 2 --timeout 300 app:app
+gunicorn --bind 127.0.0.1:5000 --worker-class gevent --workers 2 --timeout 300 comic_chaos.app:app
 ```
 
-Sessions are shared between workers through `output/sessions/`. `main.py`
-isn't used here, so `HOST`, `PORT` and `DEBUG` are ignored.
+Run it from the project folder. Sessions are shared between workers through
+`output/sessions/`. `python -m comic_chaos` isn't used here, so `HOST`, `PORT`
+and `DEBUG` are ignored.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| Comic picker says *"Add an OpenAI API key to .env to start!"* | Copy `.env.example` to `.env`, set `OPENAI_API_KEY`, restart. `python main.py --check` confirms. |
+| Comic picker says *"Add an OpenAI API key to .env to start!"* | Copy `.env.example` to `.env`, set `OPENAI_API_KEY`, restart. `python -m comic_chaos --check` confirms. |
 | *"Failed to start comic"* / *"Something went wrong"* | Read the terminal running the server. `401` means a wrong key. `429` / `insufficient_quota` means no credit or rate-limited. `model_not_found` / `does not exist` means the model is retired or not enabled for your account (see [Model retirement](#model-retirement)). A `403` on images may mean organization verification is needed. |
 | Every panel says *"Something unexpected happened..."* | The story model call failed. The server log shows `[NARRATRON] ... failed` with the reason. |
 | *"OpenAI didn't like that"* | OpenAI's safety system rejected the image. Write something else; the panel is rolled back so you can retry. |
-| `Address already in use` | Another program uses port 5000 (on macOS often AirPlay Receiver). Use `PORT=5050 python main.py`, or change the `ports` line in `compose.yaml`. |
+| `No module named comic_chaos` | Run the command from the project folder (the one containing `comic_chaos/`), with the virtual environment activated. |
+| `Address already in use` | Another program uses port 5000 (on macOS often AirPlay Receiver). Use `PORT=5050 python -m comic_chaos`, or change the `ports` line in `compose.yaml`. |
 | `pip install` tries to compile OpenCV or NumPy | Use a supported Python version (3.11–3.14), 64-bit. On Intel Macs, macOS 12+ is needed. |
 | *"Session expired"* | The server restarted or the session was idle for over an hour. Start a new comic. |
 | Opened from another device and nothing loads | By default the server only listens on `127.0.0.1`. See [above](#exposing-it-beyond-your-computer). |

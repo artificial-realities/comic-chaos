@@ -16,7 +16,7 @@ from .comic_strip import ComicStrip
 from .logging.interaction_logger import InteractionLogger
 from .json_sanitizer import safe_json_dumps, sanitize_text
 
-from comics.comic_registry import ComicRegistry
+from .comic_registry import ComicRegistry
 
 
 class ComicSession:

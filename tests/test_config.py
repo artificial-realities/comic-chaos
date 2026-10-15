@@ -2,9 +2,9 @@
 
 import pytest
 
-import main
-from src import config
-from src.state.static_config import StaticConfig
+from comic_chaos import __main__ as main
+from comic_chaos import config
+from comic_chaos.state.static_config import StaticConfig
 
 
 def test_paths_are_anchored_to_project_root():

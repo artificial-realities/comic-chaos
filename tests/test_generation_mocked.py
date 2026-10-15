@@ -10,10 +10,10 @@ from io import BytesIO
 import pytest
 from PIL import Image
 
-from src.image_gen.image_generator import ImageGenerator
-from src.narratron.models import NarratronResponse, OpeningSequenceResponse
-from src.narratron.narratron import Narratron
-from src.state.comic_state import ComicState
+from comic_chaos.image_gen.image_generator import ImageGenerator
+from comic_chaos.narratron.models import NarratronResponse, OpeningSequenceResponse
+from comic_chaos.narratron.narratron import Narratron
+from comic_chaos.state.comic_state import ComicState
 from helpers import BUBBLE_BOX, make_bubble_png, parse_sse
 
 SID = "session_0123456789abcdef0123456789abcdef"

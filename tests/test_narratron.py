@@ -4,11 +4,11 @@ import json
 
 import pytest
 
-from src.json_sanitizer import repair_json, sanitize_text
-from src.narratron.models import FALLBACK_RESPONSE, NarratronResponse
-from src.narratron.narratron import Narratron
-from src.state.static_config import StaticConfig
-from src.config import COMICS_DIR
+from comic_chaos.json_sanitizer import repair_json, sanitize_text
+from comic_chaos.narratron.models import FALLBACK_RESPONSE, NarratronResponse
+from comic_chaos.narratron.narratron import Narratron
+from comic_chaos.state.static_config import StaticConfig
+from comic_chaos.config import COMICS_DIR
 
 
 def panel(user_input):
@@ -50,7 +50,7 @@ def test_unparseable_output_falls_back(narratron):
 
 
 def test_llm_errors_are_logged_and_fall_back(narratron, monkeypatch, capsys):
-    from src.state.comic_state import ComicState
+    from comic_chaos.state.comic_state import ComicState
 
     def broken_llm(*args, **kwargs):
         raise RuntimeError("model_not_found")

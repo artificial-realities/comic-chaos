@@ -12,8 +12,9 @@ anyone picking the project up later.
 | Session checkpoints | `pickle` in shared `/tmp/comic_chaos_sessions`, file name from the client's session ID | Versioned JSON in private `output/sessions/`, IDs validated, atomic writes, age-based cleanup | Loading pickle runs code; unvalidated IDs allowed path traversal |
 | Comic lookup | `comics/<anything>` joined unchecked | Only comics found by the registry | Path traversal; archived comics were loadable |
 | Paths | Relative to the working directory | Anchored to the project root | App showed no comics when started from elsewhere |
+| Code layout | `src/` package, `app.py` and `main.py` at the root, registry in `comics/`, `templates/` and `static/` at the root | One `comic_chaos/` package; run with `python -m comic_chaos` from the project folder. `CONTRIBUTING.md` and `SECURITY.md` in `.github/` | A conventional layout with a tidy root; `comics/` holds data only |
 | Hosting files | `Procfile` (Railway) | Removed; the gunicorn command is in `docs/self-hosting.md` | The hosted demo is offline, and public hosting isn't supported |
-| Config check | none | `python main.py --check`, missing-key notice in the UI | Clear first-run errors without calling OpenAI |
+| Config check | none | `python -m comic_chaos --check`, missing-key notice in the UI | Clear first-run errors without calling OpenAI |
 | Model choice | per comic only | plus `COMIC_CHAOS_LLM_MODEL` / `COMIC_CHAOS_IMAGE_MODEL` | Lets self-hosters move off retired models without editing comics |
 | Narratron errors | swallowed silently | logged as `[NARRATRON] ... failed` | A retired model or a bad key otherwise just yields endless fallback panels |
 | Frontend text | inserted into `innerHTML` raw | escaped | HTML injection from user or model text |

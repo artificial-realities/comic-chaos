@@ -12,11 +12,11 @@ from flask import Flask, render_template, request, jsonify, Response
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-from src.config import COMICS_DIR, SESSIONS_DIR, get_openai_api_key, is_api_enabled
-from comics.comic_registry import ComicRegistry
-from src.comic_session import ComicSession
-from src.comic_strip import ComicStrip
-from src.state.comic_state import ComicState
+from .config import COMICS_DIR, SESSIONS_DIR, get_openai_api_key, is_api_enabled
+from .comic_registry import ComicRegistry
+from .comic_session import ComicSession
+from .comic_strip import ComicStrip
+from .state.comic_state import ComicState
 
 app = Flask(__name__)
 
@@ -448,8 +448,3 @@ def submit_panel_stream():
         }
     )
 
-
-if __name__ == "__main__":
-    from main import main
-
-    main()

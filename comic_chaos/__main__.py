@@ -1,16 +1,15 @@
-#!/usr/bin/env python3
 """
 Comic Chaos - Interactive Comic Strip Generator
 
-Run this file to start the web server:       python main.py
-Check the configuration (offline, no API calls): python main.py --check
+Start the web server:                             python -m comic_chaos
+Check the configuration (offline, no API calls): python -m comic_chaos --check
 """
 
 import argparse
 import os
 import sys
 
-from src.config import DEFAULT_HOST, DEFAULT_PORT, check_config
+from .config import DEFAULT_HOST, DEFAULT_PORT, check_config
 
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
@@ -27,7 +26,7 @@ def report_config() -> bool:
 
 def main(argv: list[str] | None = None) -> int:
     """Entry point - starts the web server."""
-    parser = argparse.ArgumentParser(description="Comic Chaos web server")
+    parser = argparse.ArgumentParser(prog="python -m comic_chaos", description="Comic Chaos web server")
     parser.add_argument(
         "--check", action="store_true",
         help="validate configuration and comics without starting the server or calling any API",
@@ -62,7 +61,7 @@ def main(argv: list[str] | None = None) -> int:
         browser_host = f"[{browser_host}]"  # IPv6 literal
     print(f"Open http://{browser_host}:{port} in your browser")
 
-    from app import app
+    from .app import app
 
     app.run(debug=debug, host=host, port=port)
     return 0

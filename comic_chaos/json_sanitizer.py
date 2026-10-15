@@ -8,7 +8,7 @@ Designed to be safe across multiple LLM reprocessing cycles where
 model output is fed back into subsequent prompts.
 
 Usage:
-    from src.json_sanitizer import sanitize_text, sanitize_json_string
+    from comic_chaos.json_sanitizer import sanitize_text, sanitize_json_string
 
     # Sanitize a raw LLM JSON response string before parsing
     clean_json = sanitize_json_string(raw_response)

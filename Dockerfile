@@ -29,4 +29,4 @@ ENV HOST=0.0.0.0 \
     PORT=5000
 EXPOSE 5000
 
-CMD ["python", "main.py"]
+CMD ["python", "-m", "comic_chaos"]

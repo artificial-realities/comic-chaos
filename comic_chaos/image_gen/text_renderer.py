@@ -79,7 +79,7 @@ class TextRenderer:
 
         # Try bundled Comic Neue first, then common comic-style fonts
         import os
-        base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # the comic_chaos package
         comic_fonts = [
             os.path.join(base_dir, "static", "fonts", "ComicNeue-Regular.ttf"),
             "Comic Sans MS",

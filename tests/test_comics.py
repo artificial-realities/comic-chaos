@@ -4,10 +4,10 @@ import json
 
 import pytest
 
-from comics.comic_registry import ComicRegistry
-from src.config import COMICS_DIR
-from src.state.comic_state import ComicState
-from src.state.static_config import StaticConfig, validate_comic_dir
+from comic_chaos.comic_registry import ComicRegistry
+from comic_chaos.config import COMICS_DIR
+from comic_chaos.state.comic_state import ComicState
+from comic_chaos.state.static_config import StaticConfig, validate_comic_dir
 
 BUNDLED = sorted(p.parent.name for p in COMICS_DIR.glob("*/blueprint.json") if p.parent.name != "archive")
 
