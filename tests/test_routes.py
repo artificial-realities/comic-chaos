@@ -47,6 +47,7 @@ def test_generation_requires_key(client, route):
     ({"comic_id": "gta"}, 400),
     ({"session_id": SID}, 400),
     ({"comic_id": "gta", "session_id": "../../tmp/evil"}, 400),
+    ({"comic_id": ["gta"], "session_id": SID}, 400),
     ({"comic_id": "../comics/gta", "session_id": SID}, 404),
     ({"comic_id": "archive", "session_id": SID}, 404),
     ({"comic_id": "does_not_exist", "session_id": SID}, 404),

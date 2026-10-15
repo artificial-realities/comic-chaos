@@ -356,8 +356,8 @@ def start_comic_stream():
 
     if not comic_id or not session_id:
         return jsonify({"error": "Missing comic_id or session_id"}), 400
-    if not is_valid_session_id(session_id):
-        return jsonify({"error": "Invalid session_id"}), 400
+    if not is_valid_session_id(session_id) or not isinstance(comic_id, str):
+        return jsonify({"error": "Invalid session_id or comic_id"}), 400
     if ComicRegistry(comics_dir=COMICS_DIR).get_comic_config_dir(comic_id) is None:
         return jsonify({"error": "Comic not found"}), 404
 
