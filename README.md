@@ -1,35 +1,19 @@
 # Comic Chaos
 
-**An interactive, AI-powered comic adventure.**
+An interactive comic generator built with generative AI.
 
-*An [Artificial Realities](https://github.com/artificial-realities) project.*
+An [Artificial Realities](https://github.com/artificial-realities) project.
 
-<p align="center">
-  <img src="static/images/logo.webp" alt="Comic Chaos logo" width="420">
-</p>
-
-Pick a comic and you're handed the first panel with an empty speech bubble.
-Type what the hero says, thinks, or what happens next, and the story writes and
-paints the next panel around your words while you watch it appear. Keep going
-panel by panel, then download the finished strip as a single image. You steer
-the story; the AI takes care of the art and the chaos.
-
-<!-- TODO (optional): add a real screenshot or short GIF of a comic in progress,
-     e.g. docs/images/screenshot.png. Don't link the old hosted demo; it's offline. -->
+Comic Chaos generates comic panels based on user input. Users can write dialogue, influence the story, and generate new panels using language and image models. Finished comics can be exported as a single image.
 
 ## Features
 
-- **You write the dialogue.** Fill speech bubbles, thought bubbles and narration
-  boxes, and the story follows your lead.
-- **Panels paint themselves live.** Each panel streams in as a rough preview
-  before the finished art lands.
-- **Bubbles that fit the art.** Empty bubbles are drawn into the artwork itself,
-  then found with computer vision so your text sits inside them.
-- **Three comics included**: *GTA: The Comic*, *Norway vs. Sweden* and
-  *Ticker Town*. Each has its own cast, locations, art style and rules.
-- **English and Norwegian.** The interface and the story switch languages.
-- **Download the strip.** Your comic is assembled into one shareable PNG.
-- **Make your own comic** with two JSON files.
+- **Interactive storytelling:** Generate comic panels based on dialogue and user input.
+- **Speech bubbles:** Detect speech bubbles using OpenCV and render text into them.
+- **Multiple comics:** Includes GTA: The Comic, Norway vs. Sweden, and Ticker Town.
+- **Language support:** English and Norwegian.
+- **Export:** Download completed comics as PNG images.
+- **Custom comics:** Define new comics using JSON configuration files.
 
 ## Run it locally
 
@@ -142,10 +126,9 @@ through [SECURITY.md](SECURITY.md).
 
 ## Project status
 
-Comic Chaos is a **completed project**. The former public demo is offline, so
-run it on your own computer instead. It isn't under active development, but the
-source is open for exploring, remixing and contributions. Replies to issues and
-pull requests may be slow.
+Comic Chaos is a completed project and is no longer actively maintained. The hosted demo has been discontinued, but the application can still be run locally.
+
+The source code remains available for self-hosting, modification, and contributions.
 
 ## License and credits
 
