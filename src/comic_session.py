@@ -5,10 +5,9 @@ comic creation session — managing the Narratron AI engine, image generation,
 state, and comic strip assembly.
 """
 
-import os
 import base64
 
-from .config import COMICS_DIR, ENABLE_LOGGING
+from .config import COMICS_DIR, ENABLE_LOGGING, get_openai_api_key
 from .state.static_config import StaticConfig
 from .state.comic_state import ComicState, RenderState
 from .narratron.narratron import Narratron, TitleCardPanel
@@ -25,7 +24,7 @@ class ComicSession:
 
     def __init__(self, comic_id: str, use_real_images: bool = True, language: str = "no"):
         self.comic_id = comic_id
-        self.api_key = os.getenv("OPENAI_API_KEY")
+        self.api_key = get_openai_api_key()
         self.language = language
         registry = ComicRegistry(comics_dir=COMICS_DIR)
         config_dir = registry.get_comic_config_dir(comic_id)
@@ -278,7 +277,7 @@ class ComicSession:
         content policy rejection), all state changes are rolled back so the
         user can retry with different input.
         """
-        if not self.state or not self.narratron:
+        if not self.state or not self.narratron or not self.panels_data:
             yield safe_json_dumps({"type": "error", "error": "Session not started"})
             return
 

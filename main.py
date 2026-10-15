@@ -2,26 +2,71 @@
 """
 Comic Chaos - Interactive Comic Strip Generator
 
-Run this file to start the web server.
+Run this file to start the web server:       python main.py
+Check the configuration (offline, no API calls): python main.py --check
 """
 
+import argparse
 import os
-from pathlib import Path
+import sys
 
-from app import app
-from src.config import LOGS_DIR
+from src.config import DEFAULT_HOST, DEFAULT_PORT, check_config
+
+LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 
-def main():
+def report_config() -> bool:
+    """Print configuration problems. Returns True if comics can be generated."""
+    errors, warnings = check_config()
+    for warning in warnings:
+        print(f"  WARNING: {warning}")
+    for error in errors:
+        print(f"  ERROR: {error}")
+    return not errors
+
+
+def main(argv: list[str] | None = None) -> int:
     """Entry point - starts the web server."""
-    Path(LOGS_DIR).mkdir(parents=True, exist_ok=True)
+    parser = argparse.ArgumentParser(description="Comic Chaos web server")
+    parser.add_argument(
+        "--check", action="store_true",
+        help="validate configuration and comics without starting the server or calling any API",
+    )
+    args = parser.parse_args(argv)
+
+    if args.check:
+        ok = report_config()
+        print("Configuration OK." if ok else "Configuration has problems (see above).")
+        return 0 if ok else 1
+
+    host = os.getenv("HOST", DEFAULT_HOST)
+    debug = os.getenv("DEBUG", "false").lower() == "true"
+    try:
+        port = int(os.getenv("PORT", str(DEFAULT_PORT)))
+    except ValueError:
+        print(f"ERROR: PORT must be a number, got {os.getenv('PORT')!r}")
+        return 1
+
+    if debug and host not in LOOPBACK_HOSTS:
+        print("ERROR: DEBUG=true enables an interactive debugger and is only allowed with HOST=127.0.0.1.")
+        return 1
 
     print("Starting Comic Chaos...")
-    print("Open http://localhost:5000 in your browser")
-    debug = os.getenv("DEBUG", "false").lower() == "true"
-    port = int(os.getenv("PORT", 5000))
-    app.run(debug=debug, host="0.0.0.0", port=port)
+    report_config()
+    if host not in LOOPBACK_HOSTS:
+        print(f"  WARNING: Listening on {host}. Comic Chaos has no login: anyone who can reach this "
+              "port can start comics that are billed to your OpenAI account.")
+
+    browser_host = "localhost" if host in ("0.0.0.0", "::") else host
+    if ":" in browser_host:
+        browser_host = f"[{browser_host}]"  # IPv6 literal
+    print(f"Open http://{browser_host}:{port} in your browser")
+
+    from app import app
+
+    app.run(debug=debug, host=host, port=port)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
