@@ -7,7 +7,7 @@ import pytest
 from comic_chaos.comic_registry import ComicRegistry
 from comic_chaos.config import COMICS_DIR
 from comic_chaos.state.comic_state import ComicState
-from comic_chaos.state.static_config import StaticConfig, validate_comic_dir
+from comic_chaos.state.static_config import ComicConfig, StaticConfig, validate_comic_dir
 
 BUNDLED = sorted(p.parent.name for p in COMICS_DIR.glob("*/blueprint.json") if p.parent.name != "archive")
 
@@ -54,6 +54,13 @@ def test_registry_reads_metadata_and_font(tmp_path):
     write_comic(tmp_path, "good", {**MINIMAL_BLUEPRINT, "title_no": "Testserie"}, {"panel_font": "'Comic Neue'"})
     info = ComicRegistry(comics_dir=tmp_path).get_available_comics()[0]
     assert (info.id, info.name, info.name_no, info.panel_font) == ("good", "Test Comic", "Testserie", "'Comic Neue'")
+
+
+def test_comic_without_config_uses_the_defaults(tmp_path):
+    comic_dir = write_comic(tmp_path, "plain", MINIMAL_BLUEPRINT)
+    info = ComicRegistry(comics_dir=tmp_path).get_available_comics()[0]
+    assert info.panel_font == ComicConfig().panel_font
+    assert StaticConfig.load_from_directory(comic_dir).comic_config == ComicConfig()
 
 
 def test_registry_skips_archive_and_broken_comics(tmp_path):

@@ -5,12 +5,9 @@ The first location is the starting location and the first character is the main 
 """
 
 import json
-import os
 from pathlib import Path
 
 from pydantic import BaseModel, Field, ValidationError
-
-from ..config import MODEL_ENV_OVERRIDES
 
 
 class Location(BaseModel):
@@ -75,19 +72,23 @@ class Blueprint(BaseModel):
 
 
 class ComicConfig(BaseModel):
-    """Per-comic technical configuration for models, fonts, and generation settings."""
+    """Technical configuration for models, fonts, and generation settings.
+
+    The defaults are what every bundled comic uses; a comic can override any
+    field in its own config.json.
+    """
 
     panel_font: str = Field(
-        default="'Comic Sans MS', 'Chalkboard', cursive, sans-serif",
+        default="'Comic Neue', 'Comic Sans MS', 'Chalkboard', cursive, sans-serif",
         description="CSS font-family string for in-panel text"
     )
-    llm_model: str = Field(default="gpt-4o-mini")
+    llm_model: str = Field(default="gpt-4.1")
     llm_temperature: float = Field(default=0.8)
     llm_top_p: float = Field(default=0.9)
-    llm_max_tokens: int = Field(default=1500)
-    image_model: str = Field(default="gpt-image-1-mini")
+    llm_max_tokens: int = Field(default=2048)
+    image_model: str = Field(default="gpt-image-1.5")
     image_size: str = Field(default="1024x1024")
-    image_quality: str = Field(default="low")
+    image_quality: str = Field(default="medium")
     image_moderation: str = Field(default="low")
 
 
@@ -116,11 +117,6 @@ class StaticConfig(BaseModel):
             with open(config_file, encoding="utf-8") as f:
                 data = json.load(f)
                 comic_config = ComicConfig(**data)
-
-        # Optional deployment-wide model overrides (e.g. COMIC_CHAOS_IMAGE_MODEL)
-        overrides = {field: os.environ[var] for field, var in MODEL_ENV_OVERRIDES.items() if os.getenv(var)}
-        if overrides:
-            comic_config = comic_config.model_copy(update=overrides)
 
         return cls(blueprint=blueprint, comic_config=comic_config)
 

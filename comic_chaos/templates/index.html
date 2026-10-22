@@ -1130,11 +1130,9 @@
                 failedContinue: 'Noe gikk galt \u2014 pr\u00f8v igjen!',
                 contentPolicy: 'OpenAI likte ikke det \u2014 pr\u00f8v noe annet!',
                 failedFinish: 'Klarte ikke \u00e5 fullf\u00f8re tegneserien',
-                rateLimited: 'Pust litt! Vent noen sekunder og pr\u00f8v igjen.',
                 download: 'Last ned stripen',
                 createAnother: 'Lag en ny?',
                 generating: 'Genererer...',
-                apiUnavailable: 'API-lommeboken er dessverre tom :(',
                 apiKeyMissing: 'Legg inn en OpenAI API-n\u00f8kkel i .env for \u00e5 starte!',
                 sessionExpired: '\u00d8kten har utl\u00f8pt \u2014 start en ny tegneserie!',
             },
@@ -1150,11 +1148,9 @@
                 failedContinue: 'Something went wrong \u2014 try again!',
                 contentPolicy: "OpenAI didn't like that \u2014 try something else!",
                 failedFinish: 'Failed to finish comic',
-                rateLimited: 'Take a breath! Wait a few seconds and try again.',
                 download: 'Download the strip',
                 createAnother: 'Create another?',
                 generating: 'Generating...',
-                apiUnavailable: 'The API wallet is empty :(',
                 apiKeyMissing: 'Add an OpenAI API key to .env to start!',
                 sessionExpired: 'Session expired \u2014 start a new comic!',
             }
@@ -1598,12 +1594,10 @@
 
                 // Check API availability before enabling interaction
                 let apiAvailable = true;
-                let unavailableReason = null;
                 try {
                     const statusRes = await fetch('/api/status');
                     const status = await statusRes.json();
                     apiAvailable = status.api_available;
-                    unavailableReason = status.reason || null;
                 } catch (e) { /* status check is best-effort */ }
 
                 if (apiAvailable) {
@@ -1621,7 +1615,7 @@
                         b.style.opacity = '0.6';
                     });
                     const label = document.querySelector('.select-label');
-                    label.dataset.i18n = unavailableReason === 'missing_api_key' ? 'apiKeyMissing' : 'apiUnavailable';
+                    label.dataset.i18n = 'apiKeyMissing';
                     label.textContent = t(label.dataset.i18n);
                 }
 
@@ -1676,15 +1670,6 @@
                         language: currentLang
                     })
                 });
-
-                if (response.status === 429) {
-                    showNotification(t('rateLimited'), 5000);
-                    setLoading(false);
-                    elements.workspace.classList.remove('active');
-                    elements.comicSelect.classList.remove('hidden');
-                    setLangSwitcherVisible(true);
-                    return;
-                }
 
                 if (!response.ok) {
                     throw new Error(`start-stream failed with HTTP ${response.status}`);
@@ -1904,11 +1889,6 @@
                     })
                 });
 
-                if (response.status === 429) {
-                    recoverFromError(t('rateLimited'));
-                    return;
-                }
-
                 if (response.status === 404) {
                     handleSessionExpired();
                     return;
@@ -2059,12 +2039,6 @@
                         user_input: userInput || ''
                     })
                 });
-
-                if (response.status === 429) {
-                    showNotification(t('rateLimited'), 5000);
-                    setLoading(false);
-                    return;
-                }
 
                 if (response.status === 404) {
                     handleSessionExpired();

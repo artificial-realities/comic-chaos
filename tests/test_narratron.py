@@ -1,14 +1,15 @@
-"""Narratron response handling and JSON repair (no LLM calls)."""
+"""Narratron response handling (no LLM calls)."""
 
-import json
+from types import SimpleNamespace
 
 import pytest
 
-from comic_chaos.json_sanitizer import repair_json, sanitize_text
-from comic_chaos.narratron.models import FALLBACK_RESPONSE, NarratronResponse
-from comic_chaos.narratron.narratron import Narratron
-from comic_chaos.state.static_config import StaticConfig
 from comic_chaos.config import COMICS_DIR
+from comic_chaos.narratron.models import FALLBACK_RESPONSE, NarratronResponse, NarratronResponseSchema
+from comic_chaos.narratron.narratron import Narratron
+from comic_chaos.state.comic_state import ComicState
+from comic_chaos.state.static_config import StaticConfig
+from comic_chaos.text_sanitizer import sanitize_text
 
 
 def panel(user_input):
@@ -29,12 +30,6 @@ def test_at_most_two_panels():
     assert [p.is_auto for p in response.panels] == [True, False]
 
 
-def test_repair_truncated_llm_json():
-    good = {"panels": [panel(True)], "long_term_narrative": ["a", "b"]}
-    corrupted = json.dumps(good)[:-1] + ', "rolling_summary_update": "unterminated garbage garbage'
-    assert json.loads(repair_json(corrupted)) == good
-
-
 def test_sanitize_text_keeps_norwegian_and_strips_invisibles():
     assert sanitize_text("Blåbærøl​\x00!") == "Blåbærøl!"
 
@@ -45,13 +40,42 @@ def narratron(api_key):
     return Narratron(config=config, api_key=api_key, language="no")
 
 
-def test_unparseable_output_falls_back(narratron):
-    assert narratron._parse_response("definitely not json").raw is FALLBACK_RESPONSE
+def fake_parse(parsed, refusal=None):
+    """Stand-in for client.chat.completions.parse that returns one message."""
+    message = SimpleNamespace(parsed=parsed, refusal=refusal)
+    return lambda **kwargs: SimpleNamespace(choices=[SimpleNamespace(message=message)])
+
+
+def turn(text):
+    return NarratronResponseSchema.model_validate({
+        "panels": [panel(True) | {"scene_description": text}],
+        "scene_summary": {"scene_setting": "A street", "characters_present": ["Hero"], "current_action": "Talking"},
+        "rolling_summary_update": text,
+        "short_term_narrative": ["Next"],
+        "long_term_narrative": ["Later"],
+    })
+
+
+def test_structured_response_is_used_and_sanitized(narratron, monkeypatch):
+    monkeypatch.setattr(narratron.client.chat.completions, "parse", fake_parse(turn("Hei\x00 på deg")))
+    state = ComicState.initialize_from_config(narratron.config)
+
+    response = narratron.process_input("hi", state)
+
+    assert response.raw is not FALLBACK_RESPONSE
+    assert response.panels[0].scene_description == "Hei på deg"
+    assert state.narrative.rolling_summary == "Hei på deg"
+
+
+def test_refusal_falls_back(narratron, monkeypatch, capsys):
+    monkeypatch.setattr(narratron.client.chat.completions, "parse", fake_parse(None, refusal="no"))
+    response = narratron.process_input("hi", ComicState.initialize_from_config(narratron.config))
+
+    assert response.raw is FALLBACK_RESPONSE
+    assert "refusal" in capsys.readouterr().out
 
 
 def test_llm_errors_are_logged_and_fall_back(narratron, monkeypatch, capsys):
-    from comic_chaos.state.comic_state import ComicState
-
     def broken_llm(*args, **kwargs):
         raise RuntimeError("model_not_found")
 

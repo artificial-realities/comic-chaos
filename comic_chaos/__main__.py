@@ -9,16 +9,12 @@ import argparse
 import os
 import sys
 
-from .config import DEFAULT_HOST, DEFAULT_PORT, check_config
-
-LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
+from .config import DEFAULT_PORT, HOST, check_config
 
 
 def report_config() -> bool:
     """Print configuration problems. Returns True if comics can be generated."""
-    errors, warnings = check_config()
-    for warning in warnings:
-        print(f"  WARNING: {warning}")
+    errors = check_config()
     for error in errors:
         print(f"  ERROR: {error}")
     return not errors
@@ -38,32 +34,19 @@ def main(argv: list[str] | None = None) -> int:
         print("Configuration OK." if ok else "Configuration has problems (see above).")
         return 0 if ok else 1
 
-    host = os.getenv("HOST", DEFAULT_HOST)
-    debug = os.getenv("DEBUG", "false").lower() == "true"
     try:
         port = int(os.getenv("PORT", str(DEFAULT_PORT)))
     except ValueError:
         print(f"ERROR: PORT must be a number, got {os.getenv('PORT')!r}")
         return 1
 
-    if debug and host not in LOOPBACK_HOSTS:
-        print("ERROR: DEBUG=true enables an interactive debugger and is only allowed with HOST=127.0.0.1.")
-        return 1
-
     print("Starting Comic Chaos...")
     report_config()
-    if host not in LOOPBACK_HOSTS:
-        print(f"  WARNING: Listening on {host}. Comic Chaos has no login: anyone who can reach this "
-              "port can start comics that are billed to your OpenAI account.")
-
-    browser_host = "localhost" if host in ("0.0.0.0", "::") else host
-    if ":" in browser_host:
-        browser_host = f"[{browser_host}]"  # IPv6 literal
-    print(f"Open http://{browser_host}:{port} in your browser")
+    print(f"Open http://{HOST}:{port} in your browser")
 
     from .app import app
 
-    app.run(debug=debug, host=host, port=port)
+    app.run(host=HOST, port=port)
     return 0
 
 

@@ -19,9 +19,6 @@ build/
 *.swo
 *~
 
-# Saves
-/output
-
 # Archived comics
 comics/archive/
 
@@ -38,11 +35,6 @@ Thumbs.db
 .coverage
 htmlcov/
 
-/notebooks
-
-# Local preview scripts
-splash_preview.html
-
-# Claude stuff
+# Claude Code
 .claude/
 tasks/

@@ -5,11 +5,11 @@ The LLM has creative control over the story, dynamically introducing locations
 and characters while maintaining consistency with the comic's blueprint and rules.
 """
 
-import json
 import os
-from typing import Optional, Dict, List
+from typing import Any, Optional, Dict, List
 
 from openai import OpenAI
+from pydantic import BaseModel
 
 from pathlib import Path
 
@@ -18,17 +18,8 @@ from ..state.comic_state import (
     RenderState,
 )
 from ..state.static_config import StaticConfig
-from ..logging.interaction_logger import InteractionLogger
 from ..prompt_loader import load_prompt
-from ..json_sanitizer import (
-    sanitize_text,
-    sanitize_json_string,
-    sanitize_parsed_response,
-    validate_json_response,
-    safe_json_dumps,
-    extract_json,
-    repair_json,
-)
+from ..text_sanitizer import sanitize_text, sanitize_parsed_response
 
 from .models import (
     NarratronResponseSchema,
@@ -65,14 +56,12 @@ class Narratron:
         self,
         config: StaticConfig,
         api_key: Optional[str] = None,
-        logger: Optional[InteractionLogger] = None,
         language: str = "no",
     ) -> None:
         self.config: StaticConfig = config
         self.client: OpenAI = OpenAI(
             api_key=api_key or os.getenv("OPENAI_API_KEY")
         )
-        self.logger: Optional[InteractionLogger] = logger
         self.language: str = language
 
     def _build_system_prompt(self) -> str:
@@ -87,151 +76,26 @@ class Narratron:
             rules=rules,
         )
 
-    def _call_llm(
-        self,
-        messages: List[Dict[str, str]],
-        response_model: Optional[type] = None,
-    ) -> str:
-        """Make an API call to the LLM.
+    def _call_llm(self, messages: List[Dict[str, str]], response_model: type[BaseModel]) -> Dict[str, Any]:
+        """Call the LLM with Structured Outputs and return the parsed response as a dict.
 
-        When *response_model* is a Pydantic class the call uses Structured
-        Outputs (``client.beta.chat.completions.parse``) so the response is
-        guaranteed to match the schema.  If the structured call fails for any
-        reason (unsupported model, API change, etc.) it falls back to the
-        legacy ``json_object`` mode automatically.
-
-        Returns the raw response text in both paths so downstream parsing
-        logic works unchanged.
+        The response is validated against *response_model* by the API, then
+        every string in it is sanitized. Raises if the model refuses or the
+        call fails; callers fall back to a safe panel.
         """
         cc = self.config.comic_config
-
-        response_content: str
-        parsed_via_schema = False
-
-        # --- Structured Outputs path ---
-        if response_model is not None:
-            try:
-                response = self.client.beta.chat.completions.parse(
-                    model=cc.llm_model,
-                    messages=messages,
-                    temperature=cc.llm_temperature,
-                    top_p=cc.llm_top_p,
-                    max_tokens=cc.llm_max_tokens,
-                    response_format=response_model,
-                )
-                parsed = response.choices[0].message.parsed
-                if parsed is not None:
-                    response_content = safe_json_dumps(parsed.model_dump())
-                    parsed_via_schema = True
-                else:
-                    # Model refused or returned None — fall through to legacy
-                    response_content = response.choices[0].message.content or ""
-            except Exception:
-                # Structured outputs not supported or failed — fall through
-                response_model = None  # signal to use legacy path below
-
-        # --- Legacy json_object path ---
-        if not parsed_via_schema:
-            response = self.client.chat.completions.create(
-                model=cc.llm_model,
-                messages=messages,
-                temperature=cc.llm_temperature,
-                top_p=cc.llm_top_p,
-                max_tokens=cc.llm_max_tokens,
-                response_format={"type": "json_object"},
-            )
-            response_content = response.choices[0].message.content
-
-        # --- Logging (same for both paths) ---
-        if self.logger:
-            system_prompt = next((m["content"] for m in messages if m["role"] == "system"), "")
-            user_message = next((m["content"] for m in messages if m["role"] == "user"), "")
-
-            parsed_response = None
-            try:
-                parsed_response = json.loads(response_content)
-            except json.JSONDecodeError:
-                # Try extraction and repair so the log captures the data
-                extracted = extract_json(response_content)
-                if extracted:
-                    try:
-                        parsed_response = json.loads(extracted)
-                    except json.JSONDecodeError:
-                        pass
-                if parsed_response is None:
-                    repaired = repair_json(response_content)
-                    if repaired:
-                        try:
-                            parsed_response = json.loads(repaired)
-                        except json.JSONDecodeError:
-                            pass
-
-            self.logger.log_narrative_interaction(
-                system_prompt=system_prompt,
-                user_message=user_message,
-                response=response_content,
-                parsed_response=parsed_response,
-                model=cc.llm_model,
-                temperature=cc.llm_temperature,
-                max_tokens=cc.llm_max_tokens
-            )
-
-        return response_content
-
-    def _parse_response(self, response_text: str) -> NarratronResponse:
-        """Parse the LLM response into a structured format.
-
-        Applies encoding sanitization before parsing, then validates
-        the parsed result for encoding integrity. Tries three parse
-        strategies in order:
-        1. Direct JSON parse
-        2. Extract JSON between first { and last }
-        3. Repair corrupted JSON by truncating at the last valid value boundary
-
-        After successful parsing, all string values are sanitized to
-        remove null bytes, invisible characters, and malformed Unicode.
-        """
-        # Pre-sanitize the raw JSON string to fix encoding issues
-        sanitized_text = sanitize_json_string(response_text)
-
-        # Strategy 1: Direct parse
-        data = None
-        try:
-            data = json.loads(sanitized_text)
-        except json.JSONDecodeError:
-            pass
-
-        # Strategy 2: Extract between first { and last }
-        if data is None:
-            extracted = extract_json(sanitized_text)
-            if extracted:
-                try:
-                    data = json.loads(extracted)
-                except json.JSONDecodeError:
-                    pass
-
-        # Strategy 3: Repair corrupted JSON
-        if data is None:
-            repaired = repair_json(sanitized_text)
-            if repaired:
-                try:
-                    data = json.loads(repaired)
-                    print("Successfully repaired corrupted LLM response.")
-                except json.JSONDecodeError:
-                    pass
-
-        if data is None:
-            return NarratronResponse(FALLBACK_RESPONSE)
-
-        # Deep-sanitize all string values in the parsed response
-        data = sanitize_parsed_response(data)
-
-        # Validate encoding integrity and log warnings
-        warnings = validate_json_response(data, "NarratronResponse")
-        if warnings:
-            print(f"JSON encoding warnings after sanitization: {warnings}")
-
-        return NarratronResponse(data)
+        response = self.client.chat.completions.parse(
+            model=cc.llm_model,
+            messages=messages,
+            temperature=cc.llm_temperature,
+            top_p=cc.llm_top_p,
+            max_tokens=cc.llm_max_tokens,
+            response_format=response_model,
+        )
+        message = response.choices[0].message
+        if message.parsed is None:
+            raise ValueError(f"No structured response (refusal: {message.refusal!r})")
+        return sanitize_parsed_response(message.parsed.model_dump())
 
     def _localize_fallback_placeholders(self, response: NarratronResponse) -> None:
         """Replace English fallback placeholders with localized versions."""
@@ -255,23 +119,7 @@ class Narratron:
         ]
 
         try:
-            response_text = self._call_llm(
-                messages, response_model=NarratronResponseSchema
-            )
-            # Try to parse first — if valid JSON can be extracted, use it
-            # even if there's trailing garbage. Only retry if parsing fails
-            # entirely, to avoid discarding good narrative progress.
-            response = self._parse_response(response_text)
-            if response.raw is FALLBACK_RESPONSE:
-                # Parsing failed completely — retry up to 2 times
-                for attempt in range(2):
-                    print(f"Unparseable LLM response, retry {attempt + 1}/2...")
-                    response_text = self._call_llm(
-                        messages, response_model=NarratronResponseSchema
-                    )
-                    response = self._parse_response(response_text)
-                    if response.raw is not FALLBACK_RESPONSE:
-                        break
+            response = NarratronResponse(self._call_llm(messages, NarratronResponseSchema))
         except Exception as e:
             print(f"[NARRATRON] Panel generation failed, using fallback panel: {type(e).__name__}: {e}")
             response = NarratronResponse(FALLBACK_RESPONSE)
@@ -421,47 +269,7 @@ class Narratron:
         ]
 
         try:
-            response_text = self._call_llm(
-                messages, response_model=OpeningSequenceSchema
-            )
-
-            if self.logger:
-                parsed_response = None
-                try:
-                    parsed_response = json.loads(response_text)
-                except json.JSONDecodeError:
-                    for repair_fn in (extract_json, repair_json):
-                        repaired = repair_fn(response_text)
-                        if repaired:
-                            try:
-                                parsed_response = json.loads(repaired)
-                                break
-                            except json.JSONDecodeError:
-                                pass
-
-                self.logger.log_opening_panel(
-                    system_prompt=system_prompt,
-                    user_message=user_message,
-                    response=response_text,
-                    parsed_response=parsed_response,
-                    model=self.config.comic_config.llm_model,
-                    temperature=self.config.comic_config.llm_temperature,
-                    max_tokens=self.config.comic_config.llm_max_tokens,
-                )
-
-            # Pre-sanitize the raw JSON, then parse
-            sanitized_text = sanitize_json_string(response_text)
-            try:
-                data = json.loads(sanitized_text)
-            except json.JSONDecodeError:
-                extracted = extract_json(sanitized_text)
-                if extracted:
-                    data = json.loads(extracted)
-                else:
-                    raise
-            # Deep-sanitize all string values
-            data = sanitize_parsed_response(data)
-            response = OpeningSequenceResponse.from_raw(data)
+            response = OpeningSequenceResponse.from_raw(self._call_llm(messages, OpeningSequenceSchema))
         except Exception as e:
             print(f"[NARRATRON] Opening sequence failed, using fallback: {type(e).__name__}: {e}")
             response = OpeningSequenceResponse(

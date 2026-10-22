@@ -15,15 +15,7 @@ import pytest
 # developer's real OPENAI_API_KEY never enters the test process.
 dotenv.load_dotenv = lambda *args, **kwargs: False
 
-_ENV_VARS = (
-    "OPENAI_API_KEY",
-    "API_ENABLED",
-    "HOST",
-    "PORT",
-    "DEBUG",
-    "COMIC_CHAOS_LLM_MODEL",
-    "COMIC_CHAOS_IMAGE_MODEL",
-)
+_ENV_VARS = ("OPENAI_API_KEY", "PORT")
 for _var in _ENV_VARS:
     os.environ.pop(_var, None)
 
@@ -62,15 +54,13 @@ def api_key(monkeypatch):
 
 
 @pytest.fixture
-def app_module(monkeypatch, tmp_path):
-    """The Flask app module with session checkpoints isolated in tmp_path."""
+def app_module():
+    """The Flask app module with no active sessions."""
     from comic_chaos import app as app_module
 
-    monkeypatch.setattr(app_module, "SESSIONS_DIR", tmp_path / "sessions")
     app_module.sessions.clear()
     app_module.session_timestamps.clear()
     app_module.app.config["TESTING"] = True
-    app_module.limiter.reset()
     yield app_module
     app_module.sessions.clear()
     app_module.session_timestamps.clear()

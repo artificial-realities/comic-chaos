@@ -1,4 +1,6 @@
-"""HTTP routes that never reach a model: page, comic list, status, input validation."""
+"""HTTP routes that never reach a model: page, comic list, status, input validation, sessions."""
+
+import time
 
 import pytest
 
@@ -29,11 +31,6 @@ def test_status_without_key(client):
 
 def test_status_with_key(client, api_key):
     assert client.get("/api/status").get_json() == {"api_available": True}
-
-
-def test_status_disabled(client, api_key, monkeypatch):
-    monkeypatch.setenv("API_ENABLED", "false")
-    assert client.get("/api/status").get_json() == {"api_available": False, "reason": "disabled"}
 
 
 @pytest.mark.parametrize("route", ["/api/start-stream", "/api/submit-stream"])
@@ -70,3 +67,30 @@ def test_unknown_and_invalid_sessions(client, api_key, route):
 def test_submit_rejects_non_string_input(client, api_key):
     response = client.post("/api/submit-stream", json={"session_id": SID, "user_input": {"a": 1}})
     assert response.status_code == 400
+
+
+@pytest.mark.parametrize("session_id", [
+    "session_1760000000000_k3j9x0abc",          # older frontend format
+    "session_0123456789abcdef0123456789abcdef",  # current frontend format
+    "A-Za-z0-9_-A-Za-z0-9",
+])
+def test_valid_session_ids(app_module, session_id):
+    assert app_module.is_valid_session_id(session_id)
+
+
+@pytest.mark.parametrize("session_id", [
+    None, 123, "", "short", "../../etc/passwd", "session/../../x", "session_..\\..\\x",
+    "session_abc.json", "session_ abcdefghijkl", "x" * 129,
+])
+def test_invalid_session_ids(app_module, session_id):
+    assert not app_module.is_valid_session_id(session_id)
+
+
+def test_stale_sessions_are_evicted(app_module):
+    app_module.sessions[SID] = object()
+    app_module.session_timestamps[SID] = time.monotonic() - app_module.SESSION_TTL_SECONDS - 1
+
+    app_module.cleanup_stale_sessions()
+
+    assert SID not in app_module.sessions
+    assert SID not in app_module.session_timestamps

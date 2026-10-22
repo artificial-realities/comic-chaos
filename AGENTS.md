@@ -1,8 +1,7 @@
 # AGENTS.md: working on Comic Chaos
 
 Project facts and rules for coding agents (and humans). Read this before changing
-anything. Details live in [docs/architecture.md](docs/architecture.md) and
-[docs/self-hosting.md](docs/self-hosting.md).
+anything. How it works is in [docs/architecture.md](docs/architecture.md).
 
 ## What this is
 
@@ -12,11 +11,10 @@ written by an OpenAI chat model ("Narratron") and painted by an OpenAI image
 model. OpenCV finds the empty bubble in each generated image, Pillow renders
 text into it, and the finished strip downloads as a PNG. The stack is Flask with
 Server-Sent Events plus one vanilla-JS page, with English and Norwegian (Bokmål)
-UIs.
+UIs. It runs locally, one process, for the people at the keyboard.
 
-Development is on pause while the team works on other projects. It's
-published by Artificial Realities. Keep changes small and keep the existing
-experience intact.
+Development is on pause; it's published by Artificial Realities. Keep changes
+small and keep the existing experience intact.
 
 ## Repository map
 
@@ -25,7 +23,7 @@ All code lives in the `comic_chaos/` package; `comics/` holds data only.
 ```
 comic_chaos/
   __main__.py               entry point: python -m comic_chaos [--check]
-  app.py                    Flask routes, rate limits, session cache + JSON checkpoints
+  app.py                    Flask routes, in-memory sessions (expire after an hour)
   config.py                 paths, .env loading, API-key detection, check_config()
   comic_session.py          one comic: orchestrates Narratron, images, state, strip
   comic_registry.py         comic discovery
@@ -34,17 +32,15 @@ comic_chaos/
   image_gen/                image_generator.py (OpenAI images), panel_detector.py (OpenCV),
                             text_renderer.py (Pillow)
   comic_strip.py            final strip assembly
-  state/                    static_config.py (Blueprint, ComicConfig, validate_comic_dir),
-                            comic_state.py (story state)
-  json_sanitizer.py         cleaning and repair of model JSON
-  logging/                  optional prompt/response logging (off: ENABLE_LOGGING in config.py)
+  state/                    static_config.py (Blueprint, ComicConfig with the model settings,
+                            validate_comic_dir), comic_state.py (story state)
+  text_sanitizer.py         cleans user and model text (null bytes, invisible characters)
   templates/index.html      the entire frontend, including EN/NO strings (`translations`)
   static/                   fonts (Comic Neue, OFL) and UI images
 comics/<id>/                blueprint.json (+ optional config.json); comics/archive/ is ignored
 tests/                      offline pytest suite; tests/helpers.py has synthetic images and an SSE parser
-docs/                       architecture, self-hosting, maintenance notes
-.github/                    CI workflow, CONTRIBUTING.md, SECURITY.md
-output/                     runtime data (git-ignored): sessions/, logs/
+docs/                       architecture.md
+.github/workflows/ci.yml    ruff + pytest
 ```
 
 ## Commands
@@ -52,37 +48,30 @@ output/                     runtime data (git-ignored): sessions/, logs/
 Run everything from the repository root inside a virtual environment.
 
 ```bash
-python3 -m venv .venv && source .venv/bin/activate   # Windows: py -m venv .venv; .venv\Scripts\Activate.ps1
-pip install -r requirements-dev.txt                  # runtime + pytest + ruff (pinned)
-python -m comic_chaos --check                        # offline config/blueprint validation; exit 1 if no key or a broken comic
-python -m pytest                                     # offline test suite (blocks network access, needs no key)
-ruff check .                                         # lint (rules in pyproject.toml)
-python -m comic_chaos                                # serve on http://127.0.0.1:5000 (HOST/PORT to change)
-docker compose up --build                            # container alternative (needs .env)
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-dev.txt     # runtime + pytest + ruff (pinned)
+python -m comic_chaos --check           # offline config/blueprint validation; exit 1 if no key or a broken comic
+python -m pytest                        # offline test suite (blocks network access, needs no key)
+ruff check .                            # lint (rules in pyproject.toml)
+python -m comic_chaos                   # serve on http://127.0.0.1:5000 (PORT to change)
 ```
 
-Supported Python: 3.11–3.14. CI (`.github/workflows/ci.yml`) runs Ruff and
-pytest on 3.11 and 3.14, then builds and smoke-tests the Docker image. There is
-no formatter or type checker configured; don't reformat files you aren't
-changing.
+Supported Python: 3.11–3.14; CI runs Ruff and pytest on 3.13. There is no
+formatter or type checker configured; don't reformat files you aren't changing.
 
 ## Secrets and configuration
 
 - The only secret is `OPENAI_API_KEY`, read from the environment or from `.env`
-  in the repo root (`cp .env.example .env`). `.env` is git-ignored and excluded
-  from Docker builds.
+  in the repo root (`cp .env.example .env`). `.env` is git-ignored.
 - **Never print, log, commit, echo or paste the key or the contents of `.env`.**
   Don't open `.env` to "check" it. Use `python -m comic_chaos --check`, which reports
   only whether a key is configured. If no key is set, tell the human to create
   one at <https://platform.openai.com/api-keys> and put it in `.env` themselves.
   Never ask them to paste it into chat.
-- Other variables: `HOST` (default `127.0.0.1`), `PORT` (5000), `API_ENABLED`,
-  `DEBUG`, `COMIC_CHAOS_LLM_MODEL`, `COMIC_CHAOS_IMAGE_MODEL`. See the table in
-  [docs/self-hosting.md](docs/self-hosting.md#configuration). If you add one,
-  update `.env.example` and that table.
-- Per-comic model settings live in `comics/<id>/config.json`; defaults are in
-  `ComicConfig`. The models in use are scheduled for retirement by OpenAI (see
-  [Model retirement](docs/self-hosting.md#model-retirement)). Don't switch models
+- The only other variable is `PORT` (default 5000). If you add one, update
+  `.env.example` and this file.
+- Model settings are the `ComicConfig` defaults in `comic_chaos/state/static_config.py`;
+  a comic can override them in `comics/<id>/config.json`. Don't switch models
   without the owner's agreement and a real test.
 
 ## Paid API calls: rules
@@ -121,9 +110,7 @@ request plus one or more images).
    (Norwegian UI text), `visual_style`, `rules`, `long_term_narrative`,
    `narrative_premise`. The schema is `Blueprint` in `comic_chaos/state/static_config.py`;
    copy an existing comic as a template.
-3. Optional `config.json`: any `ComicConfig` field (`llm_model`,
-   `llm_temperature`, `llm_top_p`, `llm_max_tokens`, `image_model`,
-   `image_size`, `image_quality`, `image_moderation`, `panel_font`).
+3. Optional `config.json`: any `ComicConfig` field to override.
 4. Validate with `python -m comic_chaos --check` and `python -m pytest`
    (`tests/test_comics.py` validates every bundled comic). The picker has
    bubbles for three comics; a fourth needs a new bubble in `comic_chaos/templates/index.html`.
@@ -138,29 +125,19 @@ request plus one or more images).
   framework), 120-character lines.
 - UI strings exist in both languages in `translations` in `comic_chaos/templates/index.html`.
 - Text from users or models must go through `escapeHtml` before `innerHTML`.
-- Don't rename modules, comic IDs, routes, SSE event types or the checkpoint
-  format without need. If the checkpoint format changes, bump
-  `CHECKPOINT_VERSION` in `comic_chaos/app.py`.
+- Narratron uses Structured Outputs only; when a call fails it logs the error and
+  shows a fallback panel. Don't add JSON repair or parsing fallbacks.
+- Don't rename modules, comic IDs, routes or SSE event types without need.
 
 ## Safety rules
 
-- **Network exposure:** default to `127.0.0.1`. Never change defaults to listen
-  publicly, and don't document public hosting as safe. The app has no
-  authentication, so anyone who can reach it spends the owner's API credit.
-- **Filesystem:** the app writes only under `output/`. Client-supplied values
+- **Network exposure:** the app listens on `127.0.0.1` only. Never change that
+  or document public hosting as safe. The app has no authentication, so anyone
+  who can reach it spends the owner's API credit.
+- **Filesystem:** the app writes nothing to disk. Client-supplied values
   (session IDs, comic IDs) must never become paths without validation
   (`is_valid_session_id`, `ComicRegistry.get_comic_config_dir`).
-- **Session data:** checkpoints contain what people typed and their panels. Keep
-  them in `output/sessions/`. Never use `pickle` or other code-executing
-  formats for them.
 - Don't add telemetry or third-party calls.
-
-## Troubleshooting
-
-See the table in [docs/self-hosting.md](docs/self-hosting.md#troubleshooting).
-The usual suspects are a missing key (`--check`), a busy port (`PORT=5050`), an
-unsupported Python version, or a retired model, which shows as
-`[NARRATRON] ... failed` or `model_not_found` in the server log.
 
 ## Definition of done
 

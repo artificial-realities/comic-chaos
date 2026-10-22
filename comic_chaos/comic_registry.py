@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 from pydantic import BaseModel, Field
 
+from .state.static_config import ComicConfig
+
 ARCHIVE_DIR_NAME = "archive"
 
 
@@ -16,10 +18,7 @@ class ComicInfo(BaseModel):
     description: str = Field(description="Brief description")
     description_no: str = Field(default="", description="Brief description in Norwegian")
     style: str = Field(description="Visual style description")
-    panel_font: str = Field(
-        default="'Comic Sans MS', 'Chalkboard', cursive, sans-serif",
-        description="CSS font-family for in-panel text"
-    )
+    panel_font: str = Field(description="CSS font-family for in-panel text")
 
 
 class ComicRegistry:
@@ -58,7 +57,7 @@ class ComicRegistry:
         description_no = bp_data.get("synopsis_no", "")
 
         # Load panel font from config.json if present
-        panel_font = "'Comic Sans MS', 'Chalkboard', cursive, sans-serif"
+        panel_font = ComicConfig().panel_font
         config_file = comic_path / "config.json"
         if config_file.exists():
             with open(config_file, encoding="utf-8") as f:

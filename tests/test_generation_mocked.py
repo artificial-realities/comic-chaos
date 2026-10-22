@@ -82,7 +82,6 @@ def test_full_comic_flow(client, app_module, api_key, fake_models):
     assert response.mimetype == "text/event-stream"
     types = [e["type"] for e in parse_sse(response.data)]
     assert types == ["init_title_card", "partial", "complete_title_card", "init", "partial", "complete"]
-    assert (app_module.SESSIONS_DIR / f"{SID}.json").exists()
 
     # --- submit: an automatic transition panel, then the next interactive panel ---
     response = client.post("/api/submit-stream", json={"session_id": SID, "user_input": "Hello <there>!"})
@@ -90,9 +89,6 @@ def test_full_comic_flow(client, app_module, api_key, fake_models):
     assert [e["type"] for e in events if e["type"] != "partial"] == ["init_auto", "complete_auto", "init", "complete"]
     assert fake_models["inputs"] == ["Hello <there>!"]
     assert fake_models["images"] == 4  # title card, panel 1, auto panel, panel 3
-
-    # A new worker (or a restart) can pick the session up from its checkpoint
-    app_module.sessions.clear()
 
     # --- finish: the trailing unfilled panel is left out of the strip ---
     response = client.post("/api/finish", json={"session_id": SID})
@@ -104,7 +100,6 @@ def test_full_comic_flow(client, app_module, api_key, fake_models):
 
     # Finished sessions are cleaned up
     assert SID not in app_module.sessions
-    assert not (app_module.SESSIONS_DIR / f"{SID}.json").exists()
 
 
 def test_image_failure_rolls_back_the_turn(client, app_module, api_key, fake_models, monkeypatch):
@@ -133,3 +128,13 @@ def test_submit_before_first_panel_is_an_error_event(client, app_module, api_key
 
     events = parse_sse(client.post("/api/submit-stream", json={"session_id": SID, "user_input": "x"}).data)
     assert [e["type"] for e in events] == ["error"]
+
+
+def test_finish_includes_text_typed_but_not_submitted(client, app_module, api_key, fake_models):
+    client.post("/api/start-stream", json={"comic_id": "gta", "session_id": SID, "language": "en"}).get_data()
+
+    response = client.post("/api/finish", json={"session_id": SID, "user_input": "  Last words\x00  "})
+    result = response.get_json()
+
+    assert response.status_code == 200, result
+    assert result["panel_count"] == 2  # title card and the panel the text was typed into

@@ -1,12 +1,10 @@
 """Image generation module for comic-style visuals.
 
-This module provides image generation capabilities for creating comic panels
-using OpenAI's API. It includes both a production image generator and
-a mock generator for testing purposes.
+This module creates comic panels with OpenAI's image API and finds the empty
+bubble or narration box in each one.
 
 Classes:
     ImageGenerator: Generates comic-style images using the OpenAI API.
-    MockImageGenerator: Mock generator for testing without API calls.
 """
 
 import base64
@@ -17,7 +15,6 @@ from openai import OpenAI
 
 from ..state.comic_state import RenderState
 from ..state.static_config import ComicConfig, Character
-from ..logging.interaction_logger import InteractionLogger
 from .panel_detector import PanelDetector
 
 
@@ -25,131 +22,32 @@ class ImageGenerator:
     """Generates comic-style images for the comic.
 
     This class uses OpenAI's API to generate images based on the comic's
-    render state and visual style. Generated images are saved to the configured
-    output directory. It can also detect empty bubbles in generated images
-    and render text into them.
+    render state and visual style, and detects the empty bubbles in them.
 
     Attributes:
         client: OpenAI client for making API calls.
-        output_dir: Path to the directory where generated images are saved.
         panel_detector: Detector for finding empty speech bubbles and narration boxes.
-        text_renderer: Renderer for adding text to bubbles.
     """
 
     def __init__(
         self,
         comic_config: Optional[ComicConfig] = None,
         api_key: Optional[str] = None,
-        logger: Optional[InteractionLogger] = None,
     ) -> None:
         """Initialize the image generator.
 
         Args:
             comic_config: Per-comic configuration for model settings.
             api_key: OpenAI API key. If None, uses OPENAI_API_KEY environment variable.
-            logger: Interaction logger for tracking prompts and responses.
         """
         self.comic_config: ComicConfig = comic_config or ComicConfig()
         self.client: OpenAI = OpenAI(
             api_key=api_key or os.getenv("OPENAI_API_KEY")
         )
-        self.logger: Optional[InteractionLogger] = logger
 
         # Initialize panel element detection
         self.panel_detector = PanelDetector()
         self.max_detection_retries = 2
-
-    def generate_image(
-        self,
-        render_state: RenderState,
-        visual_style: str,
-        elements: Optional[List[Dict[str, Any]]] = None,
-        main_character_description: Optional[str] = None,
-        blueprint_characters: Optional[List[Character]] = None,
-    ) -> Dict[str, Any]:
-        """Generate an image from the render state.
-
-        Builds a detailed prompt from the render state and visual style,
-        then calls the API to generate the image. After generation,
-        detects bubble regions and returns their positions.
-
-        If elements require a bubble/box and detection fails, the image is
-        regenerated up to max_detection_retries times before giving up.
-
-        Args:
-            render_state: The current render state containing scene information.
-            visual_style: The visual style description for the comic.
-            elements: Optional list of element dictionaries for bubble generation.
-
-        Returns:
-            Dictionary with:
-                - image_bytes: Raw PNG bytes (or None on failure)
-                - detected_bubbles: List of bubble position dicts with x, y, width, height
-        """
-        prompt = self._build_prompt(render_state, visual_style, elements, main_character_description, blueprint_characters)
-        needs_detection = self._needs_detection(elements)
-        last_image_bytes = None
-
-        for attempt in range(self.max_detection_retries):
-            try:
-                result = self.client.images.generate(
-                    model=self.comic_config.image_model,
-                    prompt=prompt,
-                    size=self.comic_config.image_size,
-                    quality=self.comic_config.image_quality,
-                    moderation=self.comic_config.image_moderation,
-                )
-
-                image_base64 = result.data[0].b64_json
-                image_bytes = base64.b64decode(image_base64)
-                last_image_bytes = image_bytes
-
-                detected_bubbles = self._detect_elements(image_bytes, elements) if needs_detection else []
-
-                if needs_detection and not detected_bubbles and attempt < self.max_detection_retries - 1:
-                    print(f"No bubble/box detected on attempt {attempt + 1}, retrying...")
-                    continue
-
-                if self.logger:
-                    self.logger.log_image_generation(
-                        prompt=prompt,
-                        image_path=None,
-                        model=self.comic_config.image_model,
-                        size=self.comic_config.image_size,
-                        quality=self.comic_config.image_quality,
-                        success=True
-                    )
-
-                return {
-                    "image_bytes": image_bytes,
-                    "detected_bubbles": detected_bubbles,
-                }
-
-            except Exception as error:
-                print(f"Image generation failed: {error}")
-
-                if self.logger:
-                    self.logger.log_image_generation(
-                        prompt=prompt,
-                        image_path=None,
-                        model=self.comic_config.image_model,
-                        size=self.comic_config.image_size,
-                        quality=self.comic_config.image_quality,
-                        success=False,
-                        error_message=str(error)
-                    )
-
-                return {
-                    "image_bytes": None,
-                    "detected_bubbles": [],
-                }
-
-        # All retries exhausted — return last image with no detected bubbles
-        print(f"All {self.max_detection_retries} detection attempts failed, falling back to programmatic placement.")
-        return {
-            "image_bytes": last_image_bytes,
-            "detected_bubbles": [],
-        }
 
     def generate_image_streaming(
         self,
@@ -235,16 +133,6 @@ class ImageGenerator:
                 if not detected_bubbles:
                     print(f"All {self.max_detection_retries} detection attempts failed, falling back to programmatic placement.")
 
-            if self.logger:
-                self.logger.log_image_generation(
-                    prompt=prompt,
-                    image_path=None,
-                    model=self.comic_config.image_model,
-                    size=self.comic_config.image_size,
-                    quality=self.comic_config.image_quality,
-                    success=True
-                )
-
             yield {
                 "type": "complete",
                 "image_base64": final_image_base64,
@@ -254,16 +142,6 @@ class ImageGenerator:
 
         except Exception as error:
             print(f"Streaming image generation failed: {error}")
-            if self.logger:
-                self.logger.log_image_generation(
-                    prompt=prompt,
-                    image_path=None,
-                    model=self.comic_config.image_model,
-                    size=self.comic_config.image_size,
-                    quality=self.comic_config.image_quality,
-                    success=False,
-                    error_message=str(error)
-                )
             yield {
                 "type": "error",
                 "error": str(error),
@@ -448,45 +326,3 @@ class ImageGenerator:
             )
 
         return ""
-
-
-class MockImageGenerator(ImageGenerator):
-    """A mock image generator for testing without API calls.
-
-    This class provides a testing alternative to the real ImageGenerator.
-    Instead of making actual API calls, it returns empty image bytes.
-
-    Attributes:
-        _call_count: Counter tracking the number of generation calls.
-    """
-
-    def __init__(self) -> None:
-        """Initialize the mock image generator.
-
-        Note: Does not call parent __init__ to avoid creating an OpenAI client.
-        """
-        self.comic_config: ComicConfig = ComicConfig()
-        self._call_count: int = 0
-
-    def generate_image(
-        self,
-        render_state: RenderState,
-        visual_style: str = "comic book style",
-        elements: Optional[List[Dict[str, Any]]] = None,
-    ) -> Dict[str, Any]:
-        """Generate a mock image without making API calls.
-
-        Args:
-            render_state: The current render state containing scene information.
-            visual_style: The visual style description for the comic.
-            elements: Optional list of element dictionaries with text to render.
-
-        Returns:
-            Dictionary with image_bytes and empty detected_bubbles list.
-        """
-        self._call_count += 1
-
-        return {
-            "image_bytes": None,
-            "detected_bubbles": [],
-        }

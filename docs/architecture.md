@@ -13,7 +13,7 @@ Comic definitions live in the top-level `comics/` folder.
                  └───────┬──────────────────────────────▲─────────────────┘
           POST JSON      │                              │  Server-Sent Events
                          ▼                              │  (init / partial / complete …)
- app.py ── routes, session cache + JSON checkpoints ────┤
+ app.py ── routes, in-memory sessions ─────────────────┤
    │                                                    │
    └─ ComicSession (comic_session.py) ──────────────────┘
         ├─ Narratron (narratron/)           story model → next panel(s) as structured JSON
@@ -29,7 +29,7 @@ Comic definitions live in the top-level `comics/` folder.
 |---|---|---|
 | `GET /` | Serves `templates/index.html` (HTML, CSS and JS in one file). | — |
 | `GET /api/comics` | Lists comics discovered in `comics/`. | — |
-| `GET /api/status` | `{"api_available": bool, "reason"?}`. Reports a missing key or `API_ENABLED=false`. | — |
+| `GET /api/status` | `{"api_available": bool, "reason"?}`. Reports a missing key. | — |
 | `POST /api/start-stream` | Creates a `ComicSession`, streams the title card and the first interactive panel. | 1 LLM + 2+ images |
 | `POST /api/submit-stream` | Records the reader's text, asks Narratron for the next panel(s), streams them. | 1 LLM + 1–2+ images |
 | `POST /api/finish` | Rebuilds the strip from stored panels, renders text into bubbles, returns a base64 PNG. | — |
@@ -45,14 +45,12 @@ The server accepts only `[A-Za-z0-9_-]{16,128}`.
 
 ## Components
 
-- **`app.py`**: Flask routes, rate limits (Flask-Limiter, in memory), and the
-  session cache. After each panel the session is written to
-  `output/sessions/<id>.json` (versioned JSON, written atomically). Another
-  worker or a restarted server can then continue it, and `get_session` merges
-  in a newer checkpoint if one exists. Idle sessions expire after an hour.
-- **`__main__.py`**: entry point (`python -m comic_chaos`). Reads
-  `HOST`/`PORT`/`DEBUG`, prints configuration problems, runs Flask's built-in
-  server. `python -m comic_chaos --check` runs the offline checks only.
+- **`app.py`**: Flask routes and the sessions, held in memory by the one
+  server process. Idle sessions expire after an hour; a restarted server
+  forgets them.
+- **`__main__.py`**: entry point (`python -m comic_chaos`). Reads `PORT`,
+  prints configuration problems, and runs Flask's built-in server on
+  `127.0.0.1`. `python -m comic_chaos --check` runs the offline checks only.
 - **`config.py`**: project-root paths, `.env` loading, API-key detection,
   and `check_config()`.
 - **`comic_session.py`**: orchestrates one comic. Keeps `panels_data` (image
@@ -60,10 +58,10 @@ The server accepts only `[A-Za-z0-9_-]{16,128}`.
   image generation fails, so the reader can try different words.
 - **`narratron/`**: the story engine. Builds prompts from
   `prompts/*.md` (Python `str.format` templates, so literal braces are
-  doubled), calls the chat model with Structured Outputs, and falls back to
-  JSON mode and then to repair (`json_sanitizer.py`). If everything fails it
-  uses a safe fallback panel and logs the error. `models.py` enforces at most two
-  panels per turn, the last one interactive.
+  doubled) and calls the chat model with Structured Outputs. If a call fails
+  or the model refuses, it logs the error and uses a safe fallback panel.
+  `models.py` enforces at most two panels per turn, the last one interactive.
+  `text_sanitizer.py` cleans the reader's text and the model's.
 - **`image_gen/image_generator.py`**: builds the image prompt (style,
   setting, characters, and an instruction for *one empty bubble*), streams
   partial images, and regenerates once if no bubble is detected.
@@ -84,8 +82,8 @@ The server accepts only `[A-Za-z0-9_-]{16,128}`.
 
 ## Design notes and limits
 
-- **Single-user by design.** No accounts, and sessions are addressed only by the
-  browser-generated ID. See [self-hosting](self-hosting.md#exposing-it-beyond-your-computer).
+- **Local and single-user by design.** No accounts, it listens on `127.0.0.1`
+  only, and sessions are addressed only by the browser-generated ID.
 - **Bubble detection depends on the image model drawing a clean white bubble.**
   When detection fails twice, text is drawn in a programmatic bubble instead.
 - **Language** is `no` (Norwegian Bokmål, the default) or `en`. Internal
