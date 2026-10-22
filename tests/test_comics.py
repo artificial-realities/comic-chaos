@@ -89,5 +89,5 @@ def test_validation_reports_missing_characters_and_bad_fields(tmp_path):
     missing_title = {k: v for k, v in MINIMAL_BLUEPRINT.items() if k != "title"}
     assert "ValidationError" in validate_comic_dir(write_comic(tmp_path, "b", missing_title))[0]
 
-    bad_config = write_comic(tmp_path, "c", MINIMAL_BLUEPRINT, {"llm_temperature": "hot"})
+    bad_config = write_comic(tmp_path, "c", MINIMAL_BLUEPRINT, {"llm_max_tokens": "lots"})
     assert "ValidationError" in validate_comic_dir(bad_config)[0]

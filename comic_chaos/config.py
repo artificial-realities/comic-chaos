@@ -1,6 +1,6 @@
 """Central configuration: paths, the API key, and startup checks.
 
-Model settings (LLM/image model, quality, temperature, font) are the
+Model settings (LLM/image model, reasoning effort, quality, font) are the
 ``ComicConfig`` defaults in ``comic_chaos/state/static_config.py``; a comic can
 override them in its own ``config.json``.
 """

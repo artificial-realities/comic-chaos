@@ -13,7 +13,7 @@ def test_sdk_supports_the_calls_we_make(api_key):
     client = OpenAI(api_key=api_key)
 
     chat = inspect.signature(client.chat.completions.parse).parameters
-    assert {"model", "messages", "temperature", "top_p", "max_tokens", "response_format"} <= chat.keys()
+    assert {"model", "messages", "reasoning_effort", "max_completion_tokens", "response_format"} <= chat.keys()
 
     images = inspect.signature(client.images.generate).parameters
     assert {"model", "prompt", "size", "quality", "moderation", "stream", "partial_images"} <= images.keys()

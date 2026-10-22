@@ -82,11 +82,10 @@ class ComicConfig(BaseModel):
         default="'Comic Neue', 'Comic Sans MS', 'Chalkboard', cursive, sans-serif",
         description="CSS font-family string for in-panel text"
     )
-    llm_model: str = Field(default="gpt-4.1")
-    llm_temperature: float = Field(default=0.8)
-    llm_top_p: float = Field(default=0.9)
+    llm_model: str = Field(default="gpt-6-luna")
+    llm_reasoning_effort: str = Field(default="none", description="none keeps panels fast")
     llm_max_tokens: int = Field(default=2048)
-    image_model: str = Field(default="gpt-image-1.5")
+    image_model: str = Field(default="gpt-image-2.5-flare")
     image_size: str = Field(default="1024x1024")
     image_quality: str = Field(default="medium")
     image_moderation: str = Field(default="low")
